@@ -23,18 +23,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Apply typography refinements
         run: cat typography-overrides.css >> styles.css
+
       - name: Apply service page routing
         run: cat navigation-overrides.js >> app.js
+
+      - name: Bust browser cache
+        run: |
+          sed -i "s#./styles.css#./styles.css?v=${GITHUB_SHA}#g" index.html
+          sed -i "s#./app.js#./app.js?v=${GITHUB_SHA}#g" index.html
+          sed -i "s#./service-page.css#./service-page.css?v=${GITHUB_SHA}#g" service.html
+          sed -i "s#./service-page.js#./service-page.js?v=${GITHUB_SHA}#g" service.html
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
