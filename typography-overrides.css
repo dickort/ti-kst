@@ -55,13 +55,18 @@
   max-width: 88%;
 }
 
-/* Contacts: preserve a readable data column */
+/* Contacts: keep the display headline inside its own column */
 .contact {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   gap: clamp(56px, 7vw, 130px);
 }
 .contact-main {
   min-width: 0;
+}
+.contact h2 {
+  font-size: clamp(46px, 5.7vw, 96px);
+  line-height: .94;
+  max-width: 1040px;
 }
 .contact-data {
   min-width: 280px;
@@ -82,6 +87,10 @@
   .works-grid {
     grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
   }
+  .contact h2 {
+    font-size: clamp(44px, 7.2vw, 82px);
+    max-width: 820px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -91,6 +100,9 @@
   }
   .contact-data {
     min-width: 0;
+  }
+  .contact h2 {
+    max-width: 100%;
   }
 }
 
@@ -102,5 +114,8 @@
   .work-wide h3 {
     font-size: clamp(24px, 8vw, 42px);
     max-width: 100%;
+  }
+  .contact h2 {
+    font-size: 42px;
   }
 }
