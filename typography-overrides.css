@@ -1,37 +1,43 @@
-/* TI Detailing Kostanay — subtle heading tracking refinement */
+/* TI Detailing Kostanay — subtle typography refinement */
 .hero h1 {
-  letter-spacing: -0.04em;
+  letter-spacing: -0.025em;
 }
 
 .direction-panel h2 {
-  letter-spacing: -0.03em;
+  letter-spacing: -0.015em;
 }
 
 .section-heading h2,
 .manifesto h2,
 .standards h2,
 .contact h2 {
-  letter-spacing: -0.04em;
+  letter-spacing: -0.025em;
 }
 
 .direction-column-head h3 {
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
+  line-height: 1.02;
+}
+
+/* The middle title is much longer in Russian; keep clear air before the next column. */
+.direction-column:nth-child(2) .direction-column-head h3 {
+  font-size: clamp(29px, 2.55vw, 45px);
 }
 
 .standard-card h3 {
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
 }
 
 .work-placeholder h3 {
-  letter-spacing: -0.03em;
+  letter-spacing: -0.018em;
 }
 
 .service-modal-card h2 {
-  letter-spacing: -0.04em;
+  letter-spacing: -0.025em;
 }
 
 @media (max-width: 1180px) {
   .mobile-menu a {
-    letter-spacing: -0.03em;
+    letter-spacing: -0.015em;
   }
 }
