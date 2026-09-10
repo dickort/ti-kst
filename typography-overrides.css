@@ -1,43 +1,106 @@
-/* TI Detailing Kostanay — subtle typography refinement */
+/* TI Detailing Kostanay — subtle heading tracking refinement */
 .hero h1 {
-  letter-spacing: -0.025em;
+  letter-spacing: -0.035em;
 }
 
 .direction-panel h2 {
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
 }
 
 .section-heading h2,
 .manifesto h2,
 .standards h2,
 .contact h2 {
-  letter-spacing: -0.025em;
+  letter-spacing: -0.035em;
 }
 
 .direction-column-head h3 {
-  letter-spacing: -0.01em;
-  line-height: 1.02;
-}
-
-/* The middle title is much longer in Russian; keep clear air before the next column. */
-.direction-column:nth-child(2) .direction-column-head h3 {
-  font-size: clamp(29px, 2.55vw, 45px);
+  letter-spacing: -0.025em;
 }
 
 .standard-card h3 {
-  letter-spacing: -0.01em;
+  letter-spacing: -0.012em;
 }
 
 .work-placeholder h3 {
-  letter-spacing: -0.018em;
+  letter-spacing: -0.025em;
 }
 
 .service-modal-card h2 {
-  letter-spacing: -0.025em;
+  letter-spacing: -0.035em;
+}
+
+/* Direction columns: keep long labels from colliding */
+.direction-column-head h3 {
+  font-size: clamp(28px, 2.8vw, 50px);
+  line-height: 1.02;
+}
+.direction-column[data-column="restore"] .direction-column-head h3 {
+  font-size: clamp(26px, 2.45vw, 44px);
+}
+
+/* Portfolio: narrow cards need their own title scale */
+.works-grid {
+  grid-template-columns: minmax(0, 1.28fr) minmax(360px, .72fr);
+}
+.work-placeholder:not(.work-wide) h3 {
+  font-size: clamp(24px, 2.2vw, 40px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.work-wide h3 {
+  max-width: 88%;
+}
+
+/* Contacts: preserve a readable data column */
+.contact {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: clamp(56px, 7vw, 130px);
+}
+.contact-main {
+  min-width: 0;
+}
+.contact-data {
+  min-width: 280px;
+}
+.contact-data strong,
+.contact-data a {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.contact-data a[href^="tel:"] {
+  white-space: nowrap;
 }
 
 @media (max-width: 1180px) {
   .mobile-menu a {
-    letter-spacing: -0.015em;
+    letter-spacing: -0.025em;
+  }
+  .works-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .contact {
+    grid-template-columns: 1fr;
+    gap: 56px;
+  }
+  .contact-data {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  .works-grid {
+    grid-template-columns: 1fr;
+  }
+  .work-placeholder:not(.work-wide) h3,
+  .work-wide h3 {
+    font-size: clamp(24px, 8vw, 42px);
+    max-width: 100%;
   }
 }
