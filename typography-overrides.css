@@ -1,0 +1,37 @@
+/* TI Detailing Kostanay — subtle heading tracking refinement */
+.hero h1 {
+  letter-spacing: -0.04em;
+}
+
+.direction-panel h2 {
+  letter-spacing: -0.03em;
+}
+
+.section-heading h2,
+.manifesto h2,
+.standards h2,
+.contact h2 {
+  letter-spacing: -0.04em;
+}
+
+.direction-column-head h3 {
+  letter-spacing: -0.03em;
+}
+
+.standard-card h3 {
+  letter-spacing: -0.015em;
+}
+
+.work-placeholder h3 {
+  letter-spacing: -0.03em;
+}
+
+.service-modal-card h2 {
+  letter-spacing: -0.04em;
+}
+
+@media (max-width: 1180px) {
+  .mobile-menu a {
+    letter-spacing: -0.03em;
+  }
+}
