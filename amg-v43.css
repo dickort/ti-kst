@@ -1,0 +1,23 @@
+/* AMG v43 — desktop scene stability and hotspot legibility */
+@media (min-width:1181px){
+  /* Do not resize/reposition the WebGL stage when the right panel opens.
+     Camera framing handles composition instead, keeping the guided tween smooth. */
+  .hero:has(.direction-panel.open) .stage-wrap{
+    right:0!important;
+  }
+  .stage-wrap{
+    transition:none!important;
+  }
+
+  .premium-hotspot{
+    filter:drop-shadow(0 8px 22px rgba(0,0,0,.38));
+  }
+  .premium-hotspot .label{
+    background:rgba(8,8,8,.78);
+    backdrop-filter:blur(14px);
+  }
+}
+
+@media (max-width:1180px){
+  .premium-hotspot{transition:opacity .2s ease,transform .2s ease}
+}
