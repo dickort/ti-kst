@@ -26,6 +26,10 @@ const {chromium}=req('playwright');
    if(width===1440){
     for(const w of [820,1024,1440,1920]){
      await page.setViewportSize({width:w,height:900});
+     // Playwright's headless viewport emulation does not consistently emit a
+     // window resize event under software WebGL. Real browsers do; dispatch it
+     // explicitly so this check exercises the production resize handler.
+     await page.evaluate(()=>window.dispatchEvent(new Event('resize')));
      await page.waitForFunction(expected=>{
       if(innerWidth!==expected||Math.abs(document.querySelector('#stageWrap').getBoundingClientRect().width-expected)>1)return false;
       return [...document.querySelectorAll('.nav-marker')].every(node=>{const r=node.getBoundingClientRect();return r.left>=-1&&r.right<=expected+1;});
