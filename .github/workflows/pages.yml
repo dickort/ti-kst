@@ -39,6 +39,9 @@ jobs:
           sed -i "s#./app.js#./app.js?v=${VERSION}#g" index.html
           sed -i "s#./service-page.css#./service-page.css?v=${VERSION}#g" service.html
           sed -i "s#./service-page.js#./service-page.js?v=${VERSION}#g" service.html
+          sed -i "s#./styles.css#./styles.css?v=${VERSION}#g" direction.html
+          sed -i "s#./direction-page.css#./direction-page.css?v=${VERSION}#g" direction.html
+          sed -i "s#./direction-page.js#./direction-page.js?v=${VERSION}#g" direction.html
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
