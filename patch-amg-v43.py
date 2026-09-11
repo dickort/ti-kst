@@ -33,8 +33,46 @@ text = text.replace(
     'let targetLookY = mobile() ? 0.73 : 0.78;'
 )
 
+# Guided camera moves are a direct user action and must remain animated on
+# desktop even when the OS advertises prefers-reduced-motion. That media query
+# still suppresses idle motion and decorative platform rotation, but no longer
+# turns a direction click into an instant jump.
+motion_pattern = re.compile(r'''  function startCameraMotion\(\{ rotation, distance, cameraX, cameraY, lookX = 0, lookY, duration = 1600 \}\) \{.*?\n  \}\n\n  function setDirection''', re.S)
+motion_replacement = '''  function startCameraMotion({ rotation, distance, cameraX, cameraY, lookX = 0, lookY, duration = 1600 }) {
+    targetRotation = rotation;
+    targetDistance = distance;
+    targetCameraX = cameraX;
+    targetCameraY = cameraY;
+    targetLookX = lookX;
+    targetLookY = lookY;
+
+    const guidedDuration = reducedMotion ? Math.min(duration, 1100) : duration;
+    motionTween = {
+      fromRotation: currentRotation,
+      toRotation: shortestTargetAngle(currentRotation, rotation),
+      fromDistance: currentDistance,
+      toDistance: distance,
+      fromCameraX: currentCameraX,
+      toCameraX: cameraX,
+      fromCameraY: currentCameraY,
+      toCameraY: cameraY,
+      fromLookX: currentLookX,
+      toLookX: lookX,
+      fromLookY: currentLookY,
+      toLookY: lookY,
+      start: performance.now(),
+      duration: guidedDuration
+    };
+  }
+
+  function setDirection'''
+text, count = motion_pattern.subn(motion_replacement, text, count=1)
+if count != 1:
+    raise SystemExit('AMG v46: guided motion function not found')
+
 # Desktop framing moves the car left by the camera/look target instead of
-# physically resizing the whole stage when the service panel opens.
+# physically resizing the whole stage when the service panel opens. Camera X
+# now travels enough to be perceptible instead of only rotating the car.
 old_targets = '''      preserve: {
         x: isMobile ? 0.02 : -0.10,
         y: isMobile ? 2.10 : 2.22,
@@ -54,34 +92,34 @@ old_targets = '''      preserve: {
         lookY: isMobile ? 0.72 : 0.78
       }'''
 new_targets = '''      preserve: {
-        x: isMobile ? 0.02 : 0.02,
-        y: isMobile ? 2.10 : 2.18,
-        lookX: isMobile ? 0.06 : 0.46,
-        lookY: isMobile ? 0.72 : 0.77
+        x: isMobile ? 0.02 : -0.34,
+        y: isMobile ? 2.10 : 2.16,
+        lookX: isMobile ? 0.06 : 0.34,
+        lookY: isMobile ? 0.72 : 0.76
       },
       restore: {
-        x: isMobile ? 0.08 : 0.06,
-        y: isMobile ? 2.18 : 2.24,
-        lookX: isMobile ? -0.02 : 0.43,
-        lookY: isMobile ? 0.76 : 0.80
+        x: isMobile ? 0.08 : 0.08,
+        y: isMobile ? 2.18 : 2.30,
+        lookX: isMobile ? -0.02 : 0.40,
+        lookY: isMobile ? 0.76 : 0.82
       },
       tune: {
-        x: isMobile ? 0.14 : 0.10,
-        y: isMobile ? 2.08 : 2.16,
-        lookX: isMobile ? -0.08 : 0.40,
+        x: isMobile ? 0.14 : 0.42,
+        y: isMobile ? 2.08 : 2.18,
+        lookX: isMobile ? -0.08 : 0.30,
         lookY: isMobile ? 0.72 : 0.76
       }'''
 if old_targets not in text:
-    raise SystemExit('AMG v43: direction target block not found')
+    raise SystemExit('AMG v46: direction target block not found')
 text = text.replace(old_targets, new_targets, 1)
 
 text = text.replace(
     'distance: isMobile ? 6.55 : 5.72,',
-    'distance: isMobile ? 6.45 : 5.48,'
+    'distance: isMobile ? 6.45 : 5.18,'
 )
 text = text.replace(
     'duration: isMobile ? 1480 : 1650',
-    'duration: isMobile ? 1500 : 1850'
+    'duration: isMobile ? 1500 : 1900'
 )
 
 # Close returns to the same larger front composition.
@@ -137,7 +175,7 @@ material_replacement = '''        materials.filter(Boolean).forEach((material) =
         });'''
 text, count = material_pattern.subn(material_replacement, text, count=1)
 if count != 1:
-    raise SystemExit('AMG v43: material block not found')
+    raise SystemExit('AMG v46: material block not found')
 
 text = text.replace(
     'const scale = 5.72 / Math.max(longest, 0.001);',
@@ -209,7 +247,7 @@ hotspot_replacement = '''  function updateHotspots() {
   function resize() {'''
 text, count = hotspot_pattern.subn(hotspot_replacement, text, count=1)
 if count != 1:
-    raise SystemExit('AMG v43: hotspot function not found')
+    raise SystemExit('AMG v46: hotspot function not found')
 
 # The resize path has its own pixel ratio assignment.
 text = text.replace(
@@ -217,5 +255,13 @@ text = text.replace(
     'renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile() ? 1.10 : 1.0));'
 )
 
+# A guided move must be evaluated even when reducedMotion is true. Reduced
+# motion only shortens its duration; it no longer disables the tween itself.
+text = text.replace(
+    'if (motionTween && !reducedMotion) {',
+    'if (motionTween) {',
+    1
+)
+
 path.write_text(text, encoding='utf-8')
-print('AMG v43 patch applied: desktop motion, matte black, dark glass, smooth normals, hotspot collision avoidance')
+print('AMG v46 patch applied: true guided camera tween, matte black, dark glass, smooth normals, hotspot collision avoidance')
