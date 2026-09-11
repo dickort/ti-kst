@@ -52,14 +52,12 @@ def replace(old,new):
 replace('if(!verified)model.rotation.y=-Math.PI/2;','if(!verified){const exterior=model;exterior.rotation.y=-Math.PI/2;model=new THREE.Group();model.add(exterior);}')
 replace('return window.__TI_NAV;','if(MAP[window.__TI_PENDING_DIR])selectDirection(window.__TI_PENDING_DIR);\n return window.__TI_NAV;')
 replace("hero.dataset.navReady='no-webgl';","hero.dataset.navReady='no-webgl';markerLayer.style.display='none';wires.style.display='none';")
-# A single lightweight RAF heartbeat keeps compositor frames flowing. GPU draws
-# are still demand-based. Do not create competing per-interaction RAF loops.
+# One RAF heartbeat; actual GPU draws stay demand-based.
 replace('function invalidate(){dirty=true;if(!raf&&visible&&!document.hidden&&!disposed)raf=requestAnimationFrame(tick);}','function invalidate(){dirty=true;}')
 replace('function tick(now){raf=0;if(disposed||!visible||document.hidden)return;','function tick(now){if(disposed)return;raf=requestAnimationFrame(tick);if(!visible||document.hidden)return;')
 replace('lastTime=now;if(flight||doorMotion||pointers.size)raf=requestAnimationFrame(tick);','lastTime=now;')
 replace('renderUI();\n // Diagnostics','renderUI();raf=requestAnimationFrame(tick);\n // Diagnostics')
-# Limit a single displayed step after a slow shader compilation / tab resume.
-# The movement slows under load rather than teleporting to the final camera.
+# Preserve visible intermediate steps on slower devices rather than jumping.
 replace('const m=flight,t=Math.min(1,Math.max(0,(now-m.start)/m.duration)),e=ease(t);','const m=flight;m.elapsed=(m.elapsed||0)+Math.min(50,Math.max(0,now-(m.last??m.start)));m.last=now;const t=Math.min(1,m.elapsed/m.duration),e=ease(t);')
 replace('const m=doorMotion,t=Math.min(1,Math.max(0,(now-m.start)/m.duration));','const m=doorMotion;m.elapsed=(m.elapsed||0)+Math.min(50,Math.max(0,now-Math.max(m.last??m.start,m.start)));m.last=now;const t=Math.min(1,m.elapsed/m.duration);')
 (out/'hero-service-navigator.js').write_text(js,encoding='utf-8')
@@ -67,6 +65,12 @@ css=(root/'styles.css').read_text(encoding='utf-8')
 for name in ('typography-overrides.css','section-motion.css','hero-service-navigator.css'): css+='\n'+(root/name).read_text(encoding='utf-8')
 (out/'styles.css').write_text(css,encoding='utf-8')
 html=(root/'index.html').read_text(encoding='utf-8').replace('class="hero"','class="hero nav-enabled"',1)
+# Restore the v55-sized headline, with intentional lines instead of overflowing
+# an undersized text box. On mobile the first break is hidden by CSS.
+old_title='Что нужно<br /><span>вашему автомобилю?</span>'
+new_title='Что<br class="hero-title-desktop-break" /> нужно<br /><span>вашему<br />автомобилю?</span>'
+assert old_title in html, 'Reconcile source hero title before building'
+html=html.replace(old_title,new_title,1)
 needle='<script type="module" src="./app.js"></script>';assert needle in html
 scripts='<script>window.TI_NAV_CONFIG='+json.dumps(config,separators=(',',':'))+';</script>\n'
 scripts+='  <script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script src="./section-motion.js"></script>\n  <script type="module" src="./hero-service-navigator.bundle.js"></script>'
