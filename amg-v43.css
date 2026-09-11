@@ -1,4 +1,15 @@
 /* AMG v43 — desktop scene stability and hotspot legibility */
+
+/* Hide the legacy procedural car while the real AMG asset is loading.
+   If the premium loader fails it removes premium-loading, so the legacy
+   canvas can still become the fallback. */
+.stage-wrap.premium-loading #carCanvas,
+.stage-wrap.premium-loading > .hotspot{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
 @media (min-width:1181px){
   /* Do not resize/reposition the WebGL stage when the right panel opens.
      Camera framing handles composition instead, keeping the guided tween smooth. */
