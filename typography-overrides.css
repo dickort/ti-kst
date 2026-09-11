@@ -80,6 +80,23 @@
   white-space: nowrap;
 }
 
+/* Visible route from each homepage direction into its own page */
+.direction-column-link {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-top:18px;
+  padding-bottom:5px;
+  border-bottom:1px solid rgba(255,255,255,.24);
+  font-size:11px;
+  color:#bdbdb8;
+  transition:.2s ease;
+}
+.direction-column-link:hover {
+  color:var(--accent);
+  border-color:var(--accent);
+}
+
 @media (max-width: 1180px) {
   .mobile-menu a {
     letter-spacing: -0.025em;
