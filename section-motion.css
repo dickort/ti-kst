@@ -7,11 +7,14 @@
   transition: transform .85s cubic-bezier(.22,1,.36,1), opacity .5s ease;
 }
 .section-entered::before { opacity: .6; transform: scaleX(1); }
-.motion-item { opacity: 0; transform: translate3d(0,24px,0); }
+.motion-item { opacity: 0; transform: translate3d(0,24px,0); transition: none; }
 .motion-item.motion-visible { opacity: 1; transform: none; transition: opacity .55s ease,transform .7s cubic-bezier(.22,1,.36,1); transition-delay: var(--enter-delay,0ms); }
 .motion-item:focus-within { opacity: 1; transform: none; transition: none; }
-@media(max-width:820px) { .motion-item { transform: translate3d(0,16px,0); transition-duration: .45s,.6s; } }
+@media(max-width:820px) {
+  .motion-item { transform: translate3d(0,16px,0); }
+  .motion-item.motion-visible { transition-duration: .45s,.6s; }
+}
 @media(prefers-reduced-motion:reduce) {
-  .motion-item,.section-animated::before { opacity: 1; transform: none; transition: none; }
+  .motion-item,.motion-item.motion-visible,.section-animated::before { opacity: 1; transform: none; transition: none; }
 }
 @media print { .motion-item { opacity: 1; transform: none; } }
