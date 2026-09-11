@@ -1,19 +1,15 @@
 name: Deploy static site to GitHub Pages
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: true
-
 jobs:
   deploy:
     environment:
@@ -23,60 +19,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Apply homepage refinements
+      - name: Build service navigation and validate available model rig
+        run: python3 scripts/build-service-navigator.py
+      - name: Install pinned rendering and QA dependencies
         run: |
-          cat typography-overrides.css >> styles.css
-          cat premium-car.css >> styles.css
-          cat section-motion.css >> styles.css
-          cat amg-v43.css >> styles.css
-
-      - name: Apply AMG v46 scene refinements
-        run: python3 patch-amg-v43.py
-
-      - name: Apply final AMG hero polish
-        run: python3 patch-final-hero.py
-
-      - name: Assemble verified driver-door model when assets are present
-        run: python3 scripts/assemble-driver-door.py
-
-      - name: Validate driver-door controls
+          npm install --prefix "$RUNNER_TEMP/ti-nav-deps" --no-audit --no-fund --ignore-scripts three@0.169.0 esbuild@0.25.0 playwright@1.51.1
+      - name: Bundle the single hero renderer
         run: |
-          node --check --input-type=module < hero-driver-door.js
-          node --check --input-type=module < driver-door-controller-v3.js
-          node --check --input-type=module < premium-car.js
-          node --check --input-type=module < app.js
-          npm install --prefix "$RUNNER_TEMP/ti-door-qa" --no-audit --no-fund --ignore-scripts three@0.169.0 jsdom@26.0.0
-          node scripts/test-driver-door.mjs "$RUNNER_TEMP/ti-door-qa"
-
-      - name: Inject homepage modules
+          NODE_PATH="$RUNNER_TEMP/ti-nav-deps/node_modules" "$RUNNER_TEMP/ti-nav-deps/node_modules/.bin/esbuild" _site/hero-service-navigator.js --bundle --format=esm --target=es2022 --minify --outfile=_site/hero-service-navigator.bundle.js
+          node --check --input-type=module < _site/app.js
+          node scripts/test-service-navigator.mjs
+      - name: Install browser for interaction checks
+        run: "$RUNNER_TEMP/ti-nav-deps/node_modules/.bin/playwright install --with-deps chromium"
+      - name: Test desktop and mobile navigation
         run: |
-          sed -i 's#<script type="module" src="./app.js"></script>#<script>document.getElementById("stageWrap")?.classList.add("premium-loading");</script>\n  <script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script src="./section-motion.js"></script>\n  <script type="module" src="./premium-car.js"></script>#' index.html
-
-      - name: Bust browser cache
-        run: |
-          VERSION="${GITHUB_SHA}"
-          sed -i "s#./styles.css#./styles.css?v=${VERSION}#g" index.html
-          sed -i "s#./navigation-overrides.js#./navigation-overrides.js?v=${VERSION}#g" index.html
-          sed -i "s#./section-motion.js#./section-motion.js?v=${VERSION}#g" index.html
-          sed -i "s#./app.js#./app.js?v=${VERSION}#g" index.html
-          sed -i "s#./premium-car.js#./premium-car.js?v=${VERSION}#g" index.html
-          sed -i "s#./service-page.css#./service-page.css?v=${VERSION}#g" service.html
-          sed -i "s#./service-page.js#./service-page.js?v=${VERSION}#g" service.html
-          sed -i "s#./styles.css#./styles.css?v=${VERSION}#g" direction.html
-          sed -i "s#./direction-page.css#./direction-page.css?v=${VERSION}#g" direction.html
-          sed -i "s#./direction-page.js#./direction-page.js?v=${VERSION}#g" direction.html
-
+          python3 -m http.server 4173 --directory _site >/tmp/ti-nav-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          node scripts/qa-service-navigator.cjs "$RUNNER_TEMP/ti-nav-deps"
+      - name: Save interaction checks and previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-navigator-qa
+          path: qa-service-navigator/
+          retention-days: 7
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
-
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
-
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
