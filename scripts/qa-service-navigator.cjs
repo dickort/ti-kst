@@ -4,12 +4,13 @@ const req=createRequire(path.join(process.argv[2],'package.json'));
 const {chromium}=req('playwright');
 (async()=>{
  const dir=path.resolve('qa-service-navigator');fs.mkdirSync(dir,{recursive:true});
+ fs.cpSync('_site',path.join(dir,'site'),{recursive:true});
  const browser=await chromium.launch({headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader']});
  const results=[];
  for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
-  const page=await browser.newPage({viewport,deviceScaleFactor:1,reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const page=await browser.newPage({viewport,deviceScaleFactor:1,reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('BROWSER:',e.message);});
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:60000});
-  await page.waitForFunction(()=>window.__TI_NAV&&document.querySelector('.hero').dataset.navReady,{timeout:60000});
+  await page.waitForFunction(()=>window.__TI_NAV&&['true','error','no-webgl'].includes(document.querySelector('.hero').dataset.navReady),{timeout:60000});
   const mode=await page.locator('.hero').getAttribute('data-nav-ready');
   assert(['true','no-webgl'].includes(mode),'3D failed: '+mode);
   assert.equal(await page.locator('.nav-marker').count(),3);
@@ -20,6 +21,10 @@ const {chromium}=req('playwright');
   const before=await page.evaluate(()=>__TI_NAV.getState());
   await page.waitForTimeout(600);
   const mid=await page.evaluate(()=>__TI_NAV.getState());
+  console.log('CAMERA_SAMPLES',JSON.stringify({viewport,mode,before,mid,errors}));
+  fs.writeFileSync(path.join(dir,`${viewport.width}-camera.json`),JSON.stringify({before,mid,errors},null,2));
+  await page.screenshot({path:path.join(dir,`${viewport.width}-moving.png`)});
+  assert.equal(errors.length,0,JSON.stringify(errors));
   assert(before.moving&&mid.moving,'Camera transition was instant');
   assert(Math.hypot(...mid.camera.map((v,i)=>v-before.camera[i]))>.02,'Camera did not move');
   await page.waitForTimeout(1200);
