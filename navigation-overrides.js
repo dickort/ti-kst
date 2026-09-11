@@ -30,7 +30,7 @@ function enhanceDirectionColumns(){
     const link=document.createElement("a");
     link.className="direction-column-link";
     link.href=directionUrl(key);
-    link.textContent="Открыть направление ↗";
+    link.textContent="Смотреть направление ↗";
     head.appendChild(link);
   });
 }

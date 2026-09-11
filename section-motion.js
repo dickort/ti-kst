@@ -5,9 +5,10 @@
     const sections = [...document.querySelectorAll('main > section')]
       .filter(node => !node.matches('.hero,.direction-hero,.service-hero'));
     const selectors = [
-      '.section-heading > *', '.manifesto-copy', '.manifesto-text',
+      '.value-item', '.section-heading > *', '.manifesto-copy', '.manifesto-text',
       '.direction-column-head', '.service-row', '.standards-sticky', '.standard-card',
-      '.brand-rail span', '.work-placeholder', '.contact-main', '.contact-data',
+      '.process-head > *', '.process-step', '.brand-rail span',
+      '.work-placeholder', '.works-request', '.works-signal', '.contact-main', '.contact-data',
       '.direction-intro > *', '.direction-services-head > *', '.direction-service-card',
       '.direction-standard-copy', '.direction-cta > *', '.intro-grid > *',
       '.standards-copy', '.standard-list article', '.portfolio-head > *',

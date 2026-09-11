@@ -5,8 +5,9 @@ const {chromium}=req('playwright');
 (async()=>{
  const dir=path.resolve('qa-service-navigator');fs.mkdirSync(dir,{recursive:true});fs.cpSync('_site',path.join(dir,'site'),{recursive:true});
  const config=JSON.parse(fs.readFileSync('_site/hero-service-config.json','utf8'));
- const xvfb=spawn('Xvfb',[':98','-screen','0','1920x1080x24','-nolisten','tcp'],{stdio:'ignore'});process.on('exit',()=>xvfb.kill());await new Promise(r=>setTimeout(r,650));
- const browser=await chromium.launch({headless:false,env:{...process.env,DISPLAY:':98'},args:['--no-sandbox','--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader','--disable-renderer-backgrounding','--disable-backgrounding-occluded-windows']});
+ const xvfbPath=['/usr/bin/Xvfb','/usr/local/bin/Xvfb'].find(fs.existsSync);let xvfb=null;
+ if(xvfbPath){xvfb=spawn(xvfbPath,[':98','-screen','0','1920x1080x24','-nolisten','tcp'],{stdio:'ignore'});process.on('exit',()=>xvfb?.kill());await new Promise(r=>setTimeout(r,650));}
+ const browser=await chromium.launch({headless:!xvfb,env:xvfb?{...process.env,DISPLAY:':98'}:process.env,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader','--disable-renderer-backgrounding','--disable-backgrounding-occluded-windows']});
  const results=[];
  // The model load callback precedes its first rendered frame. Measure only
  // after real projection/layout, not freshly-created buttons at left:0/top:0.
@@ -62,5 +63,5 @@ const {chromium}=req('playwright');
   await still.locator('[data-nav-action="home"]').first().click();await settle(still);assert.equal((await still.evaluate(()=>__TI_NAV.getState())).doorProgress,0);await fit(still,'native returned home');await still.screenshot({path:path.join(dir,`${viewport.width}-returned-home.png`)});await still.close();
   assert.equal(errors.length,0,JSON.stringify(errors));results.push({viewport,webgl:true,rig:inside.rigReady,doorOpened:inside.doorProgress,doorIntermediateFrames:doorFrames.filter(v=>v>0&&v<1).length,title,motionDrawingBufferRatio:.125,nativeResolutionStills:true,intermediateFrames:unique.size,errors,state:end});console.log('PASS_VIEWPORT',JSON.stringify(results.at(-1)));
  }
- await browser.close();xvfb.kill();fs.writeFileSync(path.join(dir,'results.json'),JSON.stringify(results,null,2));
+ await browser.close();xvfb?.kill();fs.writeFileSync(path.join(dir,'results.json'),JSON.stringify(results,null,2));
 })().catch(e=>{console.error(e);process.exit(1)});

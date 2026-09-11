@@ -30,9 +30,9 @@ async function fit(page,label){
 }
 (async()=>{
  fs.mkdirSync(dir,{recursive:true});
- const xvfb=spawn('Xvfb',[':96','-screen','0','1920x1080x24','-nolisten','tcp'],{stdio:'ignore'});
- await new Promise(r=>setTimeout(r,500));
- const browser=await chromium.launch({headless:false,env:{...process.env,DISPLAY:':96'},args:['--no-sandbox','--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader','--disable-renderer-backgrounding','--disable-backgrounding-occluded-windows']});
+ const xvfbPath=['/usr/bin/Xvfb','/usr/local/bin/Xvfb'].find(fs.existsSync);let xvfb=null;
+ if(xvfbPath){xvfb=spawn(xvfbPath,[':96','-screen','0','1920x1080x24','-nolisten','tcp'],{stdio:'ignore'});await new Promise(r=>setTimeout(r,500));}
+ const browser=await chromium.launch({headless:!xvfb,env:xvfb?{...process.env,DISPLAY:':96'}:process.env,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader','--disable-renderer-backgrounding','--disable-backgrounding-occluded-windows']});
  const report=[];
  try{
   for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
@@ -95,5 +95,5 @@ async function fit(page,label){
   await fallback.close();
   fs.writeFileSync(path.join(dir,'hero-regression.json'),JSON.stringify({report,cabinRetry:true,gzipFallback:true},null,2));
   console.log('PASS all car markers, all cabin zones, panel/title bounds, returns, cabin retry, gzip fallback.');
- }finally{await browser.close();xvfb.kill();}
+ }finally{await browser.close();xvfb?.kill();}
 })().catch(error=>{console.error(error);process.exitCode=1});

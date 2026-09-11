@@ -7,13 +7,14 @@ const dir=path.resolve('qa-service-navigator');
 async function check(page,label){
  const result=await page.evaluate(()=>({
   width:innerWidth,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+  outliers:[...document.querySelectorAll('body *')].filter(n=>{const r=n.getBoundingClientRect();return n.getClientRects().length&&(r.left<-1||r.right>innerWidth+1)}).slice(0,12).map(n=>({tag:n.tagName,className:String(n.className),left:n.getBoundingClientRect().left,right:n.getBoundingClientRect().right,scroll:n.scrollWidth,client:n.clientWidth})),
   brand:[...document.querySelectorAll('.brand')].map(n=>({text:[...n.children].map(c=>c.textContent.trim()).join(' '),city:getComputedStyle(n.querySelector('.brand-city')).display,overflow:n.scrollWidth-n.clientWidth})),
-  text:[...document.querySelectorAll('main h1,main h2,main h3,main p,.service-row')].filter(n=>n.getClientRects().length).map(n=>({text:n.textContent.trim(),overflow:n.scrollWidth-n.clientWidth,left:n.getBoundingClientRect().left,right:n.getBoundingClientRect().right})),
+  text:[...document.querySelectorAll('main h1,main h2,main h3,main p,.service-row')].filter(n=>n.getClientRects().length).map(n=>({tag:n.tagName,className:n.className,text:n.textContent.trim(),overflow:n.scrollWidth-n.clientWidth,left:n.getBoundingClientRect().left,right:n.getBoundingClientRect().right})),
   fonts:[...document.fonts].filter(f=>f.status==='loaded').map(f=>f.family)
  }));
- assert(result.overflow<=1,`${label}: page overflow ${result.overflow}`);
- for(const b of result.brand){assert.equal(b.text,'TI DENAILING KOSTANAY');assert.notEqual(b.city,'none');assert(b.overflow<=1);}
- for(const t of result.text){assert(t.overflow<=2,`${label}: text overflow ${t.text} ${t.overflow}`);assert(t.left>=-1&&t.right<=result.width+1,`${label}: text outside viewport ${t.text}`);}
+ for(const b of result.brand){assert.equal(b.text,'TI DETAILING KOSTANAY');assert.notEqual(b.city,'none');assert(b.overflow<=1);}
+ for(const t of result.text){assert(t.overflow<=2,`${label}: text overflow ${t.tag}.${t.className} ${t.text} ${t.overflow}`);assert(t.left>=-1&&t.right<=result.width+1,`${label}: text outside viewport ${t.tag}.${t.className} ${t.text}`);}
+ assert(result.overflow<=1,`${label}: page overflow ${result.overflow} ${JSON.stringify(result.outliers)}`);
  assert(result.fonts.some(f=>f.includes('Inter'))&&result.fonts.some(f=>f.includes('Manrope')),`${label}: local fonts not loaded`);
  return {label,...result};
 }
@@ -28,7 +29,7 @@ async function check(page,label){
    page.on('pageerror',e=>errors.push(e.message));
    page.on('request',r=>{if(/fonts\.(googleapis|gstatic)\.com/.test(r.url()))externalFonts.push(r.url());});
    await page.goto(origin,{waitUntil:'load'});await page.evaluate(()=>document.fonts.ready);
-   reports.push(await check(page,'home'));
+   reports.push(await check(page,`home ${viewport.width}`));
    const works=page.locator('.works .section-heading > div');
    assert.equal(await works.evaluate(n=>getComputedStyle(n).opacity),'0','Below-fold reveal should await entry');
    await works.scrollIntoViewIfNeeded();
@@ -37,7 +38,31 @@ async function check(page,label){
    assert(samples.some(n=>n>0&&n<1),'Section animation has no intermediate frames');
    assert(samples.at(-1)>.99,'Section animation did not finish');
    await page.screenshot({path:path.join(dir,`${viewport.width}-polish-works.png`)});
+   await page.locator('#process').scrollIntoViewIfNeeded();await page.waitForTimeout(850);
+   await page.screenshot({path:path.join(dir,`${viewport.width}-polish-process.png`)});
    await page.locator('#services').scrollIntoViewIfNeeded();await page.waitForTimeout(850);
+   await page.screenshot({path:path.join(dir,`${viewport.width}-polish-services-collapsed.png`)});
+   for(const direction of ['preserve','restore','tune']){
+    const column=page.locator(`.direction-column[data-column="${direction}"]`);
+    const toggle=column.locator('.direction-more');
+    assert.equal(await column.locator('.service-row:visible').count(),3,`${direction}: compact service preview should show three rows`);
+    await toggle.click();
+    assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+    assert.equal(await column.locator('.service-row:visible').count(),await column.locator('.service-row').count(),`${direction}: all services should expand`);
+   }
+   await page.waitForTimeout(650);
+   reports.push(await check(page,'expanded service catalogue'));
+   if(viewport.width<820){
+    const booking=page.locator('.mobile-booking');
+    assert.equal(await booking.evaluate(n=>getComputedStyle(n).pointerEvents),'auto','Mobile booking CTA should appear after hero');
+    const rect=await booking.evaluate(n=>n.getBoundingClientRect().toJSON());
+    assert(rect.left>=0&&rect.right<=viewport.width&&rect.bottom<=viewport.height+1,'Mobile booking CTA outside viewport');
+    await page.getByRole('button',{name:'Открыть меню',exact:true}).click();
+    assert.equal(await booking.evaluate(n=>getComputedStyle(n).pointerEvents),'none','Mobile booking CTA should not overlap the open menu');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.mobile-menu').getAttribute('aria-hidden'),'true');
+    assert(await page.getByRole('button',{name:'Открыть меню',exact:true}).evaluate(n=>n===document.activeElement),'Escape should return focus to the menu control');
+   }
    await page.screenshot({path:path.join(dir,`${viewport.width}-polish-services.png`)});
    const serviceSlugs=await page.locator('.service-row').evaluateAll(ns=>[...new Set(ns.map(n=>n.dataset.service))]);
    const restore=page.locator('.direction-column[data-column="restore"] .direction-column-link');
@@ -70,6 +95,7 @@ async function check(page,label){
    }
    await page.waitForTimeout(150);
    const landing=await page.locator('#contacts').evaluate(n=>({y:n.getBoundingClientRect().top,end:document.documentElement.scrollHeight-scrollY-innerHeight}));assert(landing.y>=65&&(landing.y<=150||landing.end<2),'Anchor is obscured by fixed header: '+JSON.stringify(landing));
+   if(viewport.width<820)assert.equal(await page.locator('.mobile-booking').evaluate(n=>getComputedStyle(n).pointerEvents),'none','Mobile booking CTA should clear the contact actions');
    await page.screenshot({path:path.join(dir,`${viewport.width}-polish-contact.png`)});
    reports.push(await check(page,'reduced motion contacts'));
    assert.equal(externalFonts.length,0,'Fonts must load from this site');

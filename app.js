@@ -285,19 +285,16 @@ window.addEventListener("scroll", () => {
   header.classList.toggle("scrolled", window.scrollY > 20);
 }, { passive: true });
 
-menuToggle.addEventListener("click", () => {
-  const open = !mobileMenu.classList.contains("open");
+function setMobileMenu(open, returnFocus = false) {
   mobileMenu.classList.toggle("open", open);
   menuToggle.classList.toggle("active", open);
   menuToggle.setAttribute("aria-expanded", String(open));
   mobileMenu.setAttribute("aria-hidden", String(!open));
-});
-mobileMenu.querySelectorAll("a").forEach(link => link.addEventListener("click", () => {
-  mobileMenu.classList.remove("open");
-  menuToggle.classList.remove("active");
-  menuToggle.setAttribute("aria-expanded", "false");
-  mobileMenu.setAttribute("aria-hidden", "true");
-}));
+  document.body.classList.toggle("menu-open", open);
+  if (!open && returnFocus) menuToggle.focus();
+}
+menuToggle.addEventListener("click", () => setMobileMenu(!mobileMenu.classList.contains("open")));
+mobileMenu.querySelectorAll("a").forEach(link => link.addEventListener("click", () => setMobileMenu(false)));
 
 document.querySelector(".panel-close").addEventListener("click", closeDirection);
 
@@ -309,14 +306,52 @@ function renderServiceColumns() {
         <h3>${direction.kicker}</h3>
         <p>${direction.lead}</p>
       </div>
-      ${direction.services.map(slug => {
-        const service = services[slug];
-        return `<button class="service-row" type="button" data-service="${slug}"><span>${service.title}</span><span class="arrow">↗</span></button>`;
-      }).join("")}
+      <div class="direction-services-body">
+        <div class="direction-service-list" id="service-list-${key}">
+          ${direction.services.map((slug, index) => {
+            const service = services[slug];
+            const collapsed = index >= 3 ? " hidden data-collapsed-service" : "";
+            return `<button class="service-row" type="button" data-service="${slug}"${collapsed}><span>${service.title}</span><span class="arrow" aria-hidden="true">↗</span></button>`;
+          }).join("")}
+        </div>
+        ${direction.services.length > 3 ? `<button class="direction-more" type="button" data-expand-direction="${key}" aria-controls="service-list-${key}" aria-expanded="false"><span>Показать все услуги · ${direction.services.length}</span><b aria-hidden="true">+</b></button>` : ""}
+      </div>
     </section>
   `).join("");
 }
 renderServiceColumns();
+
+function toggleDirectionServices(button) {
+  const column = button.closest(".direction-column");
+  if (!column) return;
+  const expanded = button.getAttribute("aria-expanded") !== "true";
+  column.querySelectorAll("[data-collapsed-service]").forEach(row => {
+    row.hidden = !expanded;
+    if (expanded) row.classList.add("motion-visible");
+  });
+  button.setAttribute("aria-expanded", String(expanded));
+  button.querySelector("span").textContent = expanded
+    ? "Свернуть список"
+    : `Показать все услуги · ${directions[column.dataset.column].services.length}`;
+}
+
+const heroSection = document.querySelector(".hero");
+const contactSection = document.getElementById("contacts");
+let chromeFrame = 0;
+function updatePageChrome() {
+  chromeFrame = 0;
+  const maxScroll = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  document.documentElement.style.setProperty("--page-progress", String(Math.min(1, scrollY / maxScroll)));
+  document.body.classList.toggle("past-hero", scrollY > Math.max(180, heroSection.offsetHeight * .72));
+  const contactRect = contactSection.getBoundingClientRect();
+  document.body.classList.toggle("at-contact", contactRect.top < innerHeight * .82 && contactRect.bottom > 0);
+}
+function requestPageChromeUpdate() {
+  if (!chromeFrame) chromeFrame = requestAnimationFrame(updatePageChrome);
+}
+window.addEventListener("scroll", requestPageChromeUpdate, { passive: true });
+window.addEventListener("resize", requestPageChromeUpdate);
+updatePageChrome();
 
 function selectDirection(key) {
   const direction = directions[key];
@@ -370,13 +405,16 @@ function closeService() {
 }
 
 document.addEventListener("click", event => {
+  const directionToggle = event.target.closest("[data-expand-direction]");
+  if (directionToggle) toggleDirectionServices(directionToggle);
   const serviceTrigger = event.target.closest("[data-service]");
   if (serviceTrigger) openService(serviceTrigger.dataset.service);
   if (event.target.closest("[data-close-modal]")) closeService();
 });
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
-    if (serviceModal.classList.contains("open")) closeService();
+    if (mobileMenu.classList.contains("open")) setMobileMenu(false, true);
+    else if (serviceModal.classList.contains("open")) closeService();
     else closeDirection();
   }
 });

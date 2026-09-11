@@ -9,35 +9,37 @@
   <link rel="stylesheet" href="./fonts.css" />
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./typography-overrides.css" />
+  <link rel="stylesheet" href="./showroom-v2.css" />
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
 
   <header class="site-header" id="siteHeader">
-    <a class="brand" href="#top" aria-label="TI DENAILING KOSTANAY — на главную">
+    <a class="brand" href="#top" aria-label="TI DETAILING KOSTANAY — на главную">
       <span class="brand-mark">TI</span>
-      <span class="brand-name">DENAILING</span>
+      <span class="brand-name">DETAILING</span>
       <span class="brand-city">KOSTANAY</span>
     </a>
 
     <nav class="desktop-nav" aria-label="Основная навигация">
-      <a href="#directions">Направления</a>
       <a href="#services">Услуги</a>
-      <a href="#standards">Стандарты TI</a>
+      <a href="#process">Как работаем</a>
+      <a href="#standards">Стандарт TI</a>
       <a href="#works">Работы</a>
       <a href="#contacts">Контакты</a>
     </nav>
 
-    <a class="header-cta" href="tel:+77472718888">+7 747 271 88 88</a>
+    <a class="header-cta" href="https://wa.me/77472718888" target="_blank" rel="noopener">Записаться</a>
     <button class="menu-toggle" type="button" aria-label="Открыть меню" aria-expanded="false">
       <span></span><span></span>
     </button>
+    <span class="scroll-progress" aria-hidden="true"></span>
   </header>
 
   <div class="mobile-menu" aria-hidden="true">
-    <a href="#directions">Направления</a>
     <a href="#services">Услуги</a>
-    <a href="#standards">Стандарты TI</a>
+    <a href="#process">Как работаем</a>
+    <a href="#standards">Стандарт TI</a>
     <a href="#works">Работы</a>
     <a href="#contacts">Контакты</a>
     <a class="mobile-phone" href="tel:+77472718888">+7 747 271 88 88</a>
@@ -52,7 +54,7 @@
       <div class="hero-copy">
         <div class="eyebrow">TI DETAILING · KOSTANAY</div>
         <h1 id="heroTitle">Что нужно<br /><span>вашему автомобилю?</span></h1>
-        <p class="hero-subtitle">Выберите задачу. Автомобиль покажет подходящее направление и услуги.</p>
+        <p class="hero-subtitle">Выберите задачу — покажем решение прямо на автомобиле.</p>
       </div>
 
       <div class="stage-wrap" id="stageWrap">
@@ -97,15 +99,30 @@
       </div>
     </section>
 
-    <section class="manifesto section-pad">
+    <section class="value-strip" aria-label="Подход TI Detailing">
+      <article class="value-item">
+        <span>01</span>
+        <div><strong>Диагностика</strong><p>Сначала оцениваем состояние автомобиля.</p></div>
+      </article>
+      <article class="value-item">
+        <span>02</span>
+        <div><strong>Технология</strong><p>Подбираем решение под материал и задачу.</p></div>
+      </article>
+      <article class="value-item">
+        <span>03</span>
+        <div><strong>Контроль</strong><p>Проверяем результат перед выдачей.</p></div>
+      </article>
+    </section>
+
+    <section class="manifesto showroom-intro section-pad" id="approach">
       <div class="section-number">01</div>
       <div class="manifesto-copy reveal">
         <p class="section-kicker">О TI DETAILING KOSTANAY</p>
-        <h2>Не просто очистить автомобиль.<br /><span>Сохранить его ценность.</span></h2>
+        <h2>Не просто изменить автомобиль.<br /><span>Сохранить его ценность.</span></h2>
       </div>
       <div class="manifesto-text reveal">
-        <p>Специализированная студия профессионального ухода за автомобилем в Костанае. Все работы выполняются по стандартам сети TI Detailing с применением сертифицированных технологий и профессиональных составов.</p>
-        <p class="muted">Наша задача — сохранить внешний вид, техническое состояние и рыночную стоимость автомобиля на долгие годы.</p>
+        <p>Специализированная студия профессионального ухода, восстановления и модернизации автомобиля в Костанае.</p>
+        <p class="muted">Каждое решение начинается с состояния автомобиля и задачи владельца — без универсальных пакетов и случайного набора услуг.</p>
       </div>
     </section>
 
@@ -114,20 +131,37 @@
         <div>
           <div class="section-number">02</div>
           <p class="section-kicker">УСЛУГИ</p>
-          <h2>Выберите задачу,<br /><span>не термин из прайса.</span></h2>
+          <h2>Три задачи.<br /><span>Один стандарт.</span></h2>
         </div>
-        <p>Одна услуга может решать разные задачи. Поэтому навигация строится от результата, который нужен владельцу автомобиля.</p>
+        <p>Сначала определите нужный результат. Затем выберите конкретную работу или откройте всё направление.</p>
       </div>
 
       <div class="service-directions" id="serviceDirections"></div>
     </section>
 
+    <section class="process section-pad" id="process">
+      <div class="process-head">
+        <div>
+          <div class="section-number">03</div>
+          <p class="section-kicker">КАК ПРОХОДИТ РАБОТА</p>
+          <h2>От осмотра<br /><span>до финального света.</span></h2>
+        </div>
+        <p>Последовательность сохраняется для любой задачи — меняются технология, материалы и объём работ.</p>
+      </div>
+      <div class="process-steps">
+        <article class="process-step"><span>01</span><div><h3>Диагностика</h3><p>Осматриваем автомобиль, фиксируем состояние и ограничения.</p></div></article>
+        <article class="process-step"><span>02</span><div><h3>Решение</h3><p>Согласовываем технологию, материалы и ожидаемый результат.</p></div></article>
+        <article class="process-step"><span>03</span><div><h3>Работа</h3><p>Выполняем каждый этап по выбранному технологическому процессу.</p></div></article>
+        <article class="process-step"><span>04</span><div><h3>Контроль</h3><p>Проверяем результат при рабочем свете перед выдачей автомобиля.</p></div></article>
+      </div>
+    </section>
+
     <section class="standards section-pad" id="standards">
       <div class="standards-sticky reveal">
-        <div class="section-number">03</div>
-        <p class="section-kicker">ФИЛОСОФИЯ КАЧЕСТВА</p>
-        <h2>TI Standard.<br /><span>Без быстрых решений.</span></h2>
-        <p>Каждый автомобиль проходит работу по технологическим регламентам — от первичной диагностики до финальной проверки.</p>
+        <div class="section-number">04</div>
+        <p class="section-kicker">СТАНДАРТ TI</p>
+        <h2>Технология<br /><span>важнее обещаний.</span></h2>
+        <p>Качество складывается не из одного состава или инструмента, а из последовательности работы и контроля каждого этапа.</p>
       </div>
 
       <div class="standards-list">
@@ -141,11 +175,11 @@
     <section class="materials section-pad">
       <div class="section-heading reveal">
         <div>
-          <div class="section-number">04</div>
+          <div class="section-number">05</div>
           <p class="section-kicker">МАТЕРИАЛЫ И ОБОРУДОВАНИЕ</p>
-          <h2>Профессиональный<br /><span>премиум-сегмент.</span></h2>
+          <h2>Инструменты,<br /><span>которым доверяем.</span></h2>
         </div>
-        <p>Для защиты, восстановления и ухода используем профессиональные материалы и оборудование проверенных брендов.</p>
+        <p>Для защиты, восстановления и ухода используем профессиональные материалы и оборудование проверенных производителей.</p>
       </div>
       <div class="brand-rail" aria-label="Профессиональные бренды">
         <span>SHINE SYSTEMS</span><span>KOCH CHEMIE</span><span>LERATON</span><span>RUPES</span><span>FLEX</span><span>STEK</span><span>HEXIS</span><span>COMFORTMAT</span>
@@ -155,28 +189,38 @@
     <section class="works section-pad" id="works">
       <div class="section-heading reveal">
         <div>
-          <div class="section-number">05</div>
-          <p class="section-kicker">ПОРТФОЛИО</p>
-          <h2>Работа должна<br /><span>говорить сама.</span></h2>
+          <div class="section-number">06</div>
+          <p class="section-kicker">РАБОТЫ</p>
+          <h2>Результат виден<br /><span>в деталях.</span></h2>
         </div>
-        <p>Защита кузова, восстановление внешнего вида и комфорт салона — задачи, с которыми работает TI. Фотографии проектов скоро появятся здесь.</p>
+        <p>Пока готовится полное портфолио, отправим реальные примеры работ по вашей задаче напрямую.</p>
       </div>
 
-      <div class="works-grid">
-        <article class="work-placeholder work-wide reveal"><div class="work-no">01</div><div><p>PROJECT / PPF</p><h3>Полная защита кузова</h3></div></article>
-        <article class="work-placeholder reveal"><div class="work-no">02</div><div><p>PROJECT / RESTORE</p><h3>Восстановление ЛКП</h3></div></article>
-        <article class="work-placeholder reveal"><div class="work-no">03</div><div><p>PROJECT / COMFORT</p><h3>Шумоизоляция</h3></div></article>
+      <div class="works-showcase">
+        <article class="works-request reveal">
+          <div class="works-request-top"><span>TI / SELECTED WORKS</span><span>2026</span></div>
+          <div>
+            <h3>Покажем проекты,<br />близкие к вашей задаче.</h3>
+            <p>Напишите модель автомобиля и что хотите изменить. Подберём релевантные примеры без постановочных обещаний.</p>
+            <a class="btn btn-primary" href="https://wa.me/77472718888?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%9F%D0%BE%D0%BA%D0%B0%D0%B6%D0%B8%D1%82%D0%B5%2C%20%D0%BF%D0%BE%D0%B6%D0%B0%D0%BB%D1%83%D0%B9%D1%81%D1%82%D0%B0%2C%20%D0%BF%D1%80%D0%B8%D0%BC%D0%B5%D1%80%D1%8B%20%D1%80%D0%B0%D0%B1%D0%BE%D1%82%20TI%20Detailing." target="_blank" rel="noopener">Получить примеры</a>
+          </div>
+        </article>
+        <div class="works-signals" aria-label="Направления работ">
+          <article class="works-signal"><span>01 / PRESERVE</span><strong>Защита кузова</strong><small>Плёнки и защитные покрытия</small></article>
+          <article class="works-signal"><span>02 / RESTORE</span><strong>Восстановление</strong><small>ЛКП, стекло и элементы салона</small></article>
+          <article class="works-signal"><span>03 / TUNE</span><strong>Комфорт и стиль</strong><small>Антихром, шумоизоляция и оснащение</small></article>
+        </div>
       </div>
     </section>
 
     <section class="contact section-pad" id="contacts">
       <div class="contact-main reveal">
-        <div class="section-number">06</div>
+        <div class="section-number">07</div>
         <p class="section-kicker">TI DETAILING KOSTANAY</p>
-        <h2>Ваш автомобиль.<br /><span>Наша ответственность.</span></h2>
+        <h2>Расскажите<br />об автомобиле.<br /><span>Подберём решение.</span></h2>
         <div class="contact-actions">
-          <a class="btn btn-primary btn-large" href="tel:+77472718888">Позвонить</a>
-          <a class="btn btn-ghost btn-large" href="https://wa.me/77472718888" target="_blank" rel="noopener">WhatsApp</a>
+          <a class="btn btn-primary btn-large" href="https://wa.me/77472718888" target="_blank" rel="noopener">Написать в WhatsApp</a>
+          <a class="btn btn-ghost btn-large" href="tel:+77472718888">Позвонить</a>
         </div>
       </div>
       <div class="contact-data reveal">
@@ -188,10 +232,12 @@
   </main>
 
   <footer class="site-footer">
-    <div class="brand footer-brand"><span class="brand-mark">TI</span><span class="brand-name">DENAILING</span><span class="brand-city">KOSTANAY</span></div>
+    <div class="brand footer-brand"><span class="brand-mark">TI</span><span class="brand-name">DETAILING</span><span class="brand-city">KOSTANAY</span></div>
     <p>© 2026 TI Detailing Kostanay</p>
     <a href="#top">Наверх ↑</a>
   </footer>
+
+  <a class="mobile-booking" href="https://wa.me/77472718888" target="_blank" rel="noopener"><span>Записаться</span><b aria-hidden="true">↗</b></a>
 
   <div class="service-modal" id="serviceModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="serviceModalTitle">
     <div class="service-modal-backdrop" data-close-modal></div>

@@ -4,9 +4,9 @@ const req=createRequire(path.join(process.argv[2],'package.json'));
 const {chromium}=req('playwright');
 (async()=>{
  const dir=path.resolve('qa-service-navigator');fs.mkdirSync(dir,{recursive:true});
- const xvfb=spawn('Xvfb',[':97','-screen','0','1920x1080x24','-nolisten','tcp'],{stdio:'ignore'});
- await new Promise(r=>setTimeout(r,500));
- const browser=await chromium.launch({headless:false,env:{...process.env,DISPLAY:':97'},args:['--no-sandbox','--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader','--disable-renderer-backgrounding','--disable-backgrounding-occluded-windows']});
+ const xvfbPath=['/usr/bin/Xvfb','/usr/local/bin/Xvfb'].find(fs.existsSync);let xvfb=null;
+ if(xvfbPath){xvfb=spawn(xvfbPath,[':97','-screen','0','1920x1080x24','-nolisten','tcp'],{stdio:'ignore'});await new Promise(r=>setTimeout(r,500));}
+ const browser=await chromium.launch({headless:!xvfb,env:xvfb?{...process.env,DISPLAY:':97'}:process.env,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader','--disable-renderer-backgrounding','--disable-backgrounding-occluded-windows']});
  const report=[];
  try{
   for(const width of [1440,390]){
@@ -56,5 +56,5 @@ const {chromium}=req('playwright');
   await fallback.waitForFunction(()=>window.__TI_NAV?.getState().stats.firstModelMs!==null&&__TI_NAV?.getState().modelReady,null,{timeout:120000,polling:100});
   const raw=await fallback.evaluate(()=>__TI_NAV.getState());assert(raw.stats.exterior.url.endsWith('.glb'));report.push({rawFallback:true,state:raw});await fallback.close();
   fs.writeFileSync(path.join(dir,'lossless-streaming-results.json'),JSON.stringify(report,null,2));console.log('PASS lossless streaming, deferred cabin, cancellation, reuse, intrinsic label layout, raw fallback.');
- }finally{await browser.close();xvfb.kill();}
+ }finally{await browser.close();xvfb?.kill();}
 })().catch(e=>{console.error(e);process.exitCode=1});
