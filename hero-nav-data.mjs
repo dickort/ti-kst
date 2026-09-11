@@ -81,7 +81,21 @@ export function serviceNote(slug) {
  return '';
 }
 // Deterministic callout lanes. Their hit targets never collide as the car turns.
-export function calloutLayout(count,{left,right,top,bottom},compact=false) {
+export function calloutLayout(count,{left,right,top,bottom},compact=false,sizes=null) {
+ if(sizes?.length===count&&count){
+  const gap=12,width=right-left,height=bottom-top;
+  const columns=[0,1].map(col=>Math.max(...sizes.filter((_,i)=>i%2===col).map(s=>s.w),0));
+  const twoColumns=columns[0]+columns[1]+gap<=width;
+  const rows=Math.ceil(count/(twoColumns?2:1));
+  const rowHeights=Array.from({length:rows},(_,row)=>Math.max(...sizes.filter((_,i)=>Math.floor(i/(twoColumns?2:1))===row).map(s=>s.h)));
+  const used=rowHeights.reduce((a,b)=>a+b,0),spacing=Math.max(gap,(height-used)/rows);
+  const total=used+spacing*(rows-1);let y=top+Math.max(0,(height-total)/2);
+  const centers=rowHeights.map(h=>{const center=y+h/2;y+=h+spacing;return center;});
+  return sizes.map((s,i)=>({
+   x:twoColumns?(i%2===0?left+columns[0]/2+(width-columns[0]-columns[1]-gap)/4:right-columns[1]/2-(width-columns[0]-columns[1]-gap)/4):(left+right)/2,
+   y:centers[Math.floor(i/(twoColumns?2:1))]
+  }));
+ }
  const result=[], columns=compact ? 2 : 2;
  const rows=Math.ceil(count/columns), width=right-left;
  for(let i=0;i<count;i++) {

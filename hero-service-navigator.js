@@ -52,7 +52,7 @@ export function mountServiceNavigator(hero){
   doorMotion={from:doorProgress,to,start:performance.now()+delay,duration:animateViews?duration:1,done};invalidate();
  }
  function clearEffects(){setChrome(true);setTint(true);if(ambientGroup)ambientGroup.visible=false;}
- function setChrome(on){blackpack=on;chromeMaterials.forEach(m=>{m.color.set(on?0x080808:0xa8a8a8);m.metalness=on?.48:.95;m.roughness=on?.24:.19;});invalidate();}
+ function setChrome(on){blackpack=on;chromeMaterials.forEach(m=>{m.color.set(on?0x050505:0xa8a8a8);m.metalness=on?.24:.95;m.roughness=on?.24:.19;m.envMapIntensity=on?.5:1;});invalidate();}
  function setTint(on){tinted=on;glassMaterials.forEach(m=>{m.color.set(on?0x080808:0x343434);m.opacity=1;m.transparent=false;m.depthWrite=true;});invalidate();}
  function applyDirection(key){clearEffects();nav.direction=key;nav.zone=null;nav.inside=false;nav.service=null;nav.phase='ready';
   document.querySelectorAll('.direction-tab').forEach(b=>{const yes=b.dataset.direction===key;b.classList.toggle('active',yes);b.setAttribute('aria-selected',String(yes));});
@@ -171,7 +171,7 @@ export function mountServiceNavigator(hero){
   const body=exterior&&/(carpaint|graphite paint|satin_metallic_(blue|dark|black)|blue_plastic)/i.test(name);
   const trim=exterior&&/^(Chrome(_2)?|Aluminum|Satin_Metallic|Gray_line)$/i.test(name);
   if(body||trim){if(!m.isMeshPhysicalMaterial){const p=new THREE.MeshPhysicalMaterial();p.name=m.name;m=p;}
-   m.color.set(body?0x050505:0x080808);m.metalness=body?.35:.48;m.roughness=body?.29:.24;m.clearcoat=body?.55:.34;m.clearcoatRoughness=.22;m.map=null;m.vertexColors=false;m.emissive.set(0);if(trim)chromeMaterials.push(m);
+   m.color.set(0x050505);m.metalness=body?.28:.24;m.roughness=body?.26:.24;m.clearcoat=body?.55:.18;m.clearcoatRoughness=.18;m.map=null;m.vertexColors=false;m.emissive.set(0);if(trim)chromeMaterials.push(m);
   }
   if(/^Rims(_2)?$/i.test(name)){m.color.set(0x252525);m.metalness=.82;m.roughness=.3;}
   if(/^Brakes$/i.test(name)){m.color.set(0xd8ff3e);m.metalness=.3;m.roughness=.38;}
@@ -179,7 +179,7 @@ export function mountServiceNavigator(hero){
   if(exterior&&/^Headlight_glass$/i.test(name)){m.color.set(0xdddddd);m.transparent=true;m.opacity=.12;m.depthWrite=false;m.metalness=0;m.roughness=.055;if('transmission'in m)m.transmission=0;}
   if(/^(Front_DRL|Headlight)$/i.test(name)){m.color.set(0xeaeaea);m.emissive.set(0xffffff);m.emissiveIntensity=.7;m.metalness=.12;m.roughness=.18;}
   if(/^(Tail_lights|Brakelight)$/i.test(name)){m.color.set(0x4c0303);m.emissive.set(0x850404);m.emissiveIntensity=.45;}
-  m.flatShading=false;m.envMapIntensity=body?.85:1.0;m.needsUpdate=true;materialCache.set(cacheKey,m);return m;
+  m.flatShading=false;m.envMapIntensity=body?.7:trim?.5:1.0;m.needsUpdate=true;materialCache.set(cacheKey,m);return m;
  }
  function addAmbient(){ambientGroup=new THREE.Group();model.add(ambientGroup);
   const mat=new THREE.LineBasicMaterial({color:0xd8ff3e,transparent:true,opacity:.75});

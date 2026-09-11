@@ -1,20 +1,17 @@
 name: Deploy static site to GitHub Pages
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/hero-*']
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,6 +37,7 @@ jobs:
           trap 'kill $SERVER_PID || true' EXIT
           node scripts/qa-service-navigator.cjs "$RUNNER_TEMP/ti-nav-deps"
           node scripts/qa-fast-hero.cjs "$RUNNER_TEMP/ti-nav-deps"
+          node scripts/qa-hero-regression.cjs "$RUNNER_TEMP/ti-nav-deps"
       - name: Save interaction checks and previews
         if: always()
         uses: actions/upload-artifact@v4
@@ -48,13 +46,23 @@ jobs:
           path: qa-service-navigator/
           retention-days: 7
       - name: Configure Pages
+        if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
         with:
           enablement: true
       - name: Upload site
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: validate
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

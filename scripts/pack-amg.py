@@ -4,6 +4,9 @@ import copy, json, struct, hashlib, gzip
 
 DOOR_INSIDE={'Matte_Plastic_Interior','Speakers_doors','Black_gloss','Dynamic','Decals',
              'Satin_Interior','Leather_Black','Carbon_Fiber_Interior','Stitch_1'}
+# The source exporter placed the windshield under interiorCabin. It seals the
+# exterior silhouette and must render before seats/dash/door cards are fetched.
+EXTERIOR_ENVELOPE={'cabin__Glass'}
 
 def read_glb(path):
     raw=Path(path).read_bytes(); magic,v,total=struct.unpack_from('<III',raw)
@@ -23,7 +26,7 @@ def texture_infos(value):
 def subset(doc, binary, part):
     d=copy.deepcopy(doc)
     assert not d.get('skins') and not d.get('cameras')
-    is_inner=lambda n: n.get('name','').startswith('cabin__') or (n.get('name','').startswith('door__') and n['name'][6:] in DOOR_INSIDE)
+    is_inner=lambda n: n.get('name','') not in EXTERIOR_ENVELOPE and (n.get('name','').startswith('cabin__') or (n.get('name','').startswith('door__') and n['name'][6:] in DOOR_INSIDE))
     # Keep the same root, hinge and empty cabin group in both files. Their local
     # transforms are the source of truth; quantized mesh transforms stay intact.
     nodes=[i for i,n in enumerate(d['nodes']) if 'mesh' not in n or is_inner(n)==(part=='interior')]
@@ -156,6 +159,8 @@ def prepare(source_directory, output_directory):
         reference_bounds=model_bounds(doc)
         for part in ('exterior','interior'):
             d,b,n=subset(doc,buf,part)
+            if part=='exterior':assert EXTERIOR_ENVELOPE<=n,'Closed car is missing its windshield'
+            else:assert not EXTERIOR_ENVELOPE&n,'Windshield must not wait for the cabin'
             d['asset']['extras']['referenceBounds']=reference_bounds
             fp=geometry_fingerprints(d,b)
             assert all(source_fp[k]==v for k,v in fp.items()),'Geometry values changed'
@@ -174,7 +179,7 @@ def prepare(source_directory, output_directory):
         assert images==image_hashes(doc,buf),'Missing or altered image bytes'
         source_triangles=sum(doc['accessors'][p['indices']]['count']//3 for m in doc['meshes'] for p in m['primitives'])
         assert triangles==source_triangles,'Triangle count changed'
-        result['qualities'][quality]={'sourceBytes':source.stat().st_size,'triangles':triangles,'referenceBounds':reference_bounds,'validation':{'exactAccessorValues':True,'exactNodeTransforms':True,'exactImageBytes':True,'triangleCountUnchanged':True,'losslessGzipRoundTrip':True},**parts}
+        result['qualities'][quality]={'sourceBytes':source.stat().st_size,'triangles':triangles,'referenceBounds':reference_bounds,'validation':{'exactAccessorValues':True,'exactNodeTransforms':True,'exactImageBytes':True,'triangleCountUnchanged':True,'losslessGzipRoundTrip':True,'closedCabinGlassRetained':True},**parts}
     (dst/'amg-stream-manifest.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     return result
 

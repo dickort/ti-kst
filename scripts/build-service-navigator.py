@@ -5,6 +5,7 @@ root=Path('.'); out=Path('_site'); version=os.environ.get('GITHUB_SHA','local-se
 if out.exists(): shutil.rmtree(out)
 out.mkdir()
 for p in root.iterdir():
+    if p.name in {'package.json','package-lock.json','vite.config.mjs'}: continue
     if p.is_file() and p.suffix in {'.html','.css','.js','.mjs','.svg','.ico','.json'}: shutil.copy2(p,out/p.name)
 shutil.copytree(root/'assets',out/'assets')
 source=(root/'app.js').read_text(encoding='utf-8')

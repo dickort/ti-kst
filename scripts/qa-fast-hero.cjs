@@ -10,7 +10,7 @@ const {chromium}=req('playwright');
  const report=[];
  try{
   for(const width of [1440,390]){
-   const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});
+   const context=await browser.newContext({viewport:{width,height:width===390?844:900},deviceScaleFactor:1});
    const page=await context.newPage(),requests=[],errors=[];
    page.on('request',r=>{if(r.url().includes('/assets/'))requests.push(r.url());});page.on('pageerror',e=>errors.push(e.message));
    // Software GPU only: change raster size, NOT meshes, textures or shaders.

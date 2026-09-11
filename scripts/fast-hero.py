@@ -21,7 +21,8 @@ rep(" const config=window.TI_NAV_CONFIG||{rig:false,version:'local'};", " const 
 rep("let markers=[],stats={frames:0,flights:0,lastFlightMs:0,rig:false};","let markers=[],stats={frames:0,flights:0,lastFlightMs:0,rig:false,firstModelMs:null,exterior:null,interior:null};")
 rep("function area(){const r=stage.getBoundingClientRect(),c=compact();return {w:r.width,h:r.height,left:nav.direction?24:r.width*(c?.05:.37),right:r.width-(nav.direction&&!c?Math.min(386,r.width*.30)+40:22),top:c?22:38,bottom:r.height-34};}","""function area(){const r=stage.getBoundingClientRect(),c=compact();
   const copy=hero.querySelector('.hero-copy')?.getBoundingClientRect();
-  const panelLeft=panel.hidden?r.width:panel.getBoundingClientRect().left-r.left;
+  // offsetLeft is stable while the panel's entrance animation is running.
+  const panelLeft=panel.hidden?r.width:panel.offsetLeft-stage.offsetLeft;
   return {w:r.width,h:r.height,left:nav.direction?24:(c?r.width*.05:Math.min(r.width*.60,(copy?.right||r.width*.56)-r.left+12)),right:nav.direction&&!c?panelLeft-18:r.width-22,top:c?22:38,bottom:r.height-34};
  }""")
 # Preserve elapsed time clamping; shorten only the durations.
@@ -57,22 +58,18 @@ rep("else if(a==='closer'&&rigReady){animateDoor(.09,350,0,()=>animateDoor(0,850
     .finally(()=>{b.disabled=false;if(b.textContent==='Подготовка…')b.textContent=old;});
   }""")
 # Layout uses measured labels rather than an assumed fixed pill width.
-rep("function updateMarkers(){if(!modelReady)return;const a=area(),layout=calloutLayout(markers.length,a,compact());", "function updateMarkers(){if(!modelReady)return;const a=area(),layout=calloutLayout(markers.length,a,compact()),placed=[];")
-rep("const p=layout[i];b.style.transform=", """const p={...layout[i]},w=b.offsetWidth,h=b.offsetHeight,pad=8;
-   p.x=THREE.MathUtils.clamp(p.x,a.left+w/2+pad,a.right-w/2-pad);
-   p.y=THREE.MathUtils.clamp(p.y,a.top+h/2+pad,a.bottom-h/2-pad);
-   const overlaps=q=>placed.some(v=>Math.abs(q.x-v.x)<(w+v.w)/2+pad&&Math.abs(q.y-v.y)<(h+v.h)/2+pad);
-   if(overlaps(p)){
-    const candidates=placed.flatMap(v=>[v.y+(v.h+h)/2+pad,v.y-(v.h+h)/2-pad]).sort((x,y)=>Math.abs(x-p.y)-Math.abs(y-p.y));
-    for(const y of candidates){const q={x:p.x,y};if(y-h/2>=a.top&&y+h/2<=a.bottom&&!overlaps(q)){p.y=y;break;}}
-   }
-   placed.push({x:p.x,y:p.y,w,h});b.style.transform=""")
+rep("function updateMarkers(){if(!modelReady)return;const a=area(),layout=calloutLayout(markers.length,a,compact());", """function updateMarkers(){if(!modelReady)return;const a=area();
+  // Read every pill before writing transforms: no per-label layout thrashing.
+  const sizes=markers.map(({b})=>({w:b.offsetWidth,h:b.offsetHeight}));
+  const layout=calloutLayout(markers.length,a,compact(),sizes);""")
+rep("const p=layout[i];b.style.transform=", "const p=layout[i];b.style.visibility='visible';b.style.transform=")
+rep("b.dataset.navMarker=z.id;", "b.style.visibility='hidden';b.dataset.navMarker=z.id;")
 # Improve oblique texture sampling without changing any image bytes.
 rep("m.flatShading=false;m.envMapIntensity=", "for(const key of ['map','normalMap','roughnessMap','metalnessMap']){const tex=m[key];if(tex)tex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());}\n  m.flatShading=false;m.envMapIntensity=")
 a=s.index(' async function loadModel()');b=s.index(' function resize()',a)
 s=s[:a]+''' function processMeshes(root){
   root.traverse(n=>{if(!n.isMesh)return;let parent=n,inCabin=false;while(parent){if(parent.name==='interiorCabin')inCabin=true;parent=parent.parent;}
-   const context=inCabin?'cabin':n.name.startsWith('door__')?'door':'exterior';
+   const context=inCabin&&n.name!=='cabin__Glass'?'cabin':n.name.startsWith('door__')?'door':'exterior';
    n.material=Array.isArray(n.material)?n.material.map(m=>processMaterial(m,context)):processMaterial(n.material,context);
    if(!n.geometry.attributes.normal)n.geometry.computeVertexNormals();n.castShadow=false;n.receiveShadow=false;
   });
