@@ -29,6 +29,10 @@ jobs:
           cat typography-overrides.css >> styles.css
           cat premium-car.css >> styles.css
           cat section-motion.css >> styles.css
+          cat amg-v43.css >> styles.css
+
+      - name: Apply AMG v43 scene refinements
+        run: python3 patch-amg-v43.py
 
       - name: Inject homepage modules
         run: |
