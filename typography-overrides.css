@@ -133,6 +133,10 @@
     max-width: 100%;
   }
   .contact h2 {
-    font-size: 42px;
+    font-size: clamp(28px, 8vw, 42px);
   }
+  /* Long words in the sections below the hero must not widen the page. */
+  .section-heading { grid-template-columns: minmax(0, 1fr); }
+  .section-heading > * { min-width: 0; max-width: 100%; }
+  .materials .section-heading h2 { font-size: clamp(24px, 6.8vw, 42px); }
 }

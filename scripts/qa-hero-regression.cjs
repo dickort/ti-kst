@@ -16,7 +16,8 @@ async function fit(page,label){
    text:[...document.querySelectorAll('.nav-panel h2,.nav-panel-scroll,.nav-zone-row,.nav-service-choices button')].filter(n=>n.getClientRects().length).map(n=>({text:n.textContent,overflow:n.scrollWidth-n.clientWidth}))};
  });
  const overlap=(a,b)=>a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1;
- assert(result.overflow<=1,label+': page horizontal overflow');
+ fs.writeFileSync(path.join(dir,`${result.viewport.width}-latest-layout.json`),JSON.stringify({label,...result},null,2));
+ assert(result.overflow<=1,`${label} ${result.viewport.width}: page horizontal overflow ${result.overflow}px`);
  for(const m of result.markers){
   const r=m.rect;assert(m.overflow<=2,label+': overflowing label '+m.text);
   assert(r.left>=0&&r.right<=result.viewport.width&&r.top>=0&&r.bottom<=result.viewport.height,label+': label outside viewport');
