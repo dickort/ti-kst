@@ -31,12 +31,12 @@ jobs:
           cat section-motion.css >> styles.css
           cat amg-v43.css >> styles.css
 
-      - name: Apply AMG v43 scene refinements
+      - name: Apply AMG v46 scene refinements
         run: python3 patch-amg-v43.py
 
       - name: Inject homepage modules
         run: |
-          sed -i 's#<script type="module" src="./app.js"></script>#<script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script src="./section-motion.js"></script>\n  <script type="module" src="./premium-car.js"></script>#' index.html
+          sed -i 's#<script type="module" src="./app.js"></script>#<script>document.getElementById("stageWrap")?.classList.add("premium-loading");</script>\n  <script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script src="./section-motion.js"></script>\n  <script type="module" src="./premium-car.js"></script>#' index.html
 
       - name: Bust browser cache
         run: |
