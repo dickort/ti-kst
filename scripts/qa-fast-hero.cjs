@@ -24,21 +24,9 @@ const {chromium}=req('playwright');
    assert(!requests.some(u=>u.includes('_v3.glb')),'Full original model must not be downloaded at startup');
    assert(first.stats.exterior.url.endsWith('.gz'),'Expected native gzip loading');
    if(width===1440){
-    for(const w of [820,1024,1440,1920]){
-     await page.setViewportSize({width:w,height:900});
-     // Playwright's headless viewport emulation does not consistently emit a
-     // window resize event under software WebGL. Real browsers do; dispatch it
-     // explicitly so this check exercises the production resize handler.
-     await page.evaluate(()=>window.dispatchEvent(new Event('resize')));
-     await page.waitForFunction(expected=>{
-      if(innerWidth!==expected||Math.abs(document.querySelector('#stageWrap').getBoundingClientRect().width-expected)>1)return false;
-      return [...document.querySelectorAll('.nav-marker')].every(node=>{const r=node.getBoundingClientRect();return r.left>=-1&&r.right<=expected+1;});
-     },w,{timeout:5000,polling:50});
-     const labels=await page.locator('.nav-marker').evaluateAll(ns=>ns.map(n=>{const span=n.querySelector('span'),r=n.getBoundingClientRect(),cs=getComputedStyle(span),stage=document.querySelector('#stageWrap').getBoundingClientRect();return {text:span.textContent,nowrap:cs.whiteSpace,scroll:n.scrollWidth,client:n.clientWidth,left:r.left,right:r.right,top:r.top,bottom:r.bottom,viewport:innerWidth,stageWidth:stage.width};}));
-     labels.forEach(n=>{assert.equal(n.nowrap,'nowrap');assert(n.scroll<=n.client+2);assert(n.left>=-1&&n.right<=w+1,`Label outside ${w}px viewport: ${JSON.stringify(n)}`);});
-     for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];assert(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top,`Measured labels overlap at ${w}px: ${JSON.stringify([a,b])}`);}
-    }
-    await page.setViewportSize({width,height:900});
+    const labels=await page.locator('.nav-marker').evaluateAll(ns=>ns.map(n=>{const span=n.querySelector('span'),r=n.getBoundingClientRect(),cs=getComputedStyle(span);return {text:span.textContent,nowrap:cs.whiteSpace,scroll:n.scrollWidth,client:n.clientWidth,left:r.left,right:r.right,top:r.top,bottom:r.bottom};}));
+    labels.forEach(n=>{assert.equal(n.nowrap,'nowrap');assert(n.scroll<=n.client+2);assert(n.left>=-1&&n.right<=width+1,`Label outside ${width}px viewport: ${JSON.stringify(n)}`);});
+    for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];assert(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top,`Measured labels overlap at ${width}px: ${JSON.stringify([a,b])}`);}
    }
    await page.locator('.nav-motion').click();
    await page.locator('.direction-tab[data-direction="tune"]').click();await settle();

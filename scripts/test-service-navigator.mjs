@@ -23,6 +23,18 @@ for(const width of [390,820,1440,1920]){
   assert(Math.abs(list[i].x-list[j].x)>=(compact?44:200)||Math.abs(list[i].y-list[j].y)>=44,'Callout overlap');
  }
 }
+const labelSets=[
+ {count:3,sizes:[{w:123,h:47},{w:145,h:47},{w:105,h:47}]},
+ {count:5,sizes:[{w:142,h:47},{w:176,h:47},{w:154,h:47},{w:181,h:47},{w:190,h:47}]}
+];
+for(const width of [820,1024,1440,1920])for(const set of labelSets){
+ const panelLeft=width-Math.min(386,width*.30)-24;
+ const box=set.count===3?{left:Math.min(width*.60,540),right:width-22,top:38,bottom:700}:{left:24,right:panelLeft-18,top:38,bottom:700};
+ const list=calloutLayout(set.count,box,false,set.sizes);
+ const rects=list.map((point,i)=>({left:point.x-set.sizes[i].w/2,right:point.x+set.sizes[i].w/2,top:point.y-set.sizes[i].h/2,bottom:point.y+set.sizes[i].h/2}));
+ for(const rect of rects)assert(rect.left>=box.left-1&&rect.right<=box.right+1&&rect.top>=box.top-1&&rect.bottom<=box.bottom+1,`Measured label outside ${width}px layout`);
+ for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){const a=rects[i],b=rects[j];assert(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top,`Measured labels overlap at ${width}px`);}
+}
 const app=fs.readFileSync('_site/app.js','utf8');
 assert(!app.includes('new THREE.')&&!app.includes('setAnimationLoop'));
 const html=fs.readFileSync('_site/index.html','utf8');assert(!html.includes('src="./premium-car.js'));
