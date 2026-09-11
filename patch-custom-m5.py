@@ -6,14 +6,14 @@ text = path.read_text(encoding='utf-8')
 
 text = text.replace(
     'import { GLTFLoader } from "https://esm.sh/three@0.169.0/examples/jsm/loaders/GLTFLoader.js";',
-    'import { createM5F90Model } from "./m5-f90-model.js";'
+    'import { createM5F90Model } from "./m5-f90-model-v2.js";'
 )
 
 credit_pattern = re.compile(r'''  const credit = document\.createElement\("a"\);\n  credit\.className = "model-credit";\n  credit\.href = "https://github\.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept";\n  credit\.target = "_blank";\n  credit\.rel = "noopener";\n  credit\.textContent = "3D asset · CarConcept · CC BY 4\.0";\n  stage\.appendChild\(credit\);''')
 text, count = credit_pattern.subn(
 '''  const credit = document.createElement("div");
   credit.className = "model-credit";
-  credit.textContent = "Custom 3D · M5 F90 · TI prototype";
+  credit.textContent = "Custom 3D · M5 F90 · sculpted web model";
   stage.appendChild(credit);''',
     text,
     count=1
@@ -82,13 +82,13 @@ old_anchors = '''  const anchorMap = {
     tune: new THREE.Vector3(0.9, 0.48, 1.42)
   };'''
 new_anchors = '''  const anchorMap = {
-    preserve: new THREE.Vector3(1.50, 1.22, -0.72),
-    restore: new THREE.Vector3(-0.38, 1.58, 0.70),
-    tune: new THREE.Vector3(-1.48, 0.55, 0.92)
+    preserve: new THREE.Vector3(1.42, 1.20, -0.72),
+    restore: new THREE.Vector3(-0.30, 1.57, 0.69),
+    tune: new THREE.Vector3(-1.44, 0.56, 0.94)
   };'''
 if old_anchors not in text:
     raise SystemExit('Could not patch hotspot anchors')
 text = text.replace(old_anchors, new_anchors, 1)
 
 path.write_text(text, encoding='utf-8')
-print('premium-car.js patched: custom procedural M5 F90 model enabled')
+print('premium-car.js patched: sculpted custom M5 F90 v2 enabled')
