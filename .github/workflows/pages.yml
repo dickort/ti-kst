@@ -30,16 +30,12 @@ jobs:
           cat premium-car.css >> styles.css
           cat section-motion.css >> styles.css
           cat amg-v43.css >> styles.css
-          cat interior-door.css >> styles.css
 
       - name: Apply AMG v46 scene refinements
         run: python3 patch-amg-v43.py
 
       - name: Apply final AMG hero polish
         run: python3 patch-final-hero.py
-
-      - name: Apply interior door prototype
-        run: python3 patch-interior-door.py
 
       - name: Inject homepage modules
         run: |
