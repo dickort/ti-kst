@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#080808" />
   <meta name="description" content="TI Detailing Kostanay — профессиональная студия ухода, защиты, восстановления и модернизации автомобиля в Костанае." />
   <title>TI Detailing Kostanay — сохранить. восстановить. тюнинг.</title>
+  <link rel="preload" as="image" type="image/webp" href="./assets/amg-hero-poster-desktop.webp" media="(min-width: 820px)" fetchpriority="high" />
+  <link rel="preload" as="image" type="image/webp" href="./assets/amg-hero-poster-mobile.webp" media="(max-width: 819px)" fetchpriority="high" />
   <link rel="stylesheet" href="./fonts.css" />
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./typography-overrides.css" />
@@ -58,6 +60,10 @@
       </div>
 
       <div class="stage-wrap" id="stageWrap">
+        <picture class="nav-poster" aria-hidden="true">
+          <source media="(max-width: 819px)" srcset="./assets/amg-hero-poster-mobile.webp" width="390" height="444" />
+          <img src="./assets/amg-hero-poster-desktop.webp" width="1440" height="733" alt="" fetchpriority="high" decoding="async" />
+        </picture>
         <canvas id="carCanvas" aria-label="Интерактивная 3D-модель автомобиля"></canvas>
         <div class="stage-vignette" aria-hidden="true"></div>
         <div class="stage-label" aria-hidden="true">INTERACTIVE / 01</div>

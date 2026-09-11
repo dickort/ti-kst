@@ -72,6 +72,7 @@ old_title='Что нужно<br /><span>вашему автомобилю?</span
 new_title='Что<br class="hero-title-desktop-break" /> нужно<br /><span>вашему<br />автомобилю?</span>'
 assert old_title in html, 'Reconcile source hero title before building'
 html=html.replace(old_title,new_title,1)
+html=html.replace('</head>','  <link rel="modulepreload" href="./hero-service-navigator.bundle.js" />\n</head>',1)
 needle='<script type="module" src="./app.js"></script>';assert needle in html
 scripts='<script>window.TI_NAV_CONFIG='+json.dumps(config,separators=(',',':'))+';</script>\n'
 scripts+='  <script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script src="./section-motion.js"></script>\n  <script type="module" src="./hero-service-navigator.bundle.js"></script>'

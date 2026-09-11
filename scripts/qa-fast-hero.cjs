@@ -25,10 +25,14 @@ const {chromium}=req('playwright');
    assert(first.stats.exterior.url.endsWith('.gz'),'Expected native gzip loading');
    if(width===1440){
     for(const w of [820,1024,1440,1920]){
-     await page.setViewportSize({width:w,height:900});await page.waitForTimeout(300);
-     const labels=await page.locator('.nav-marker').evaluateAll(ns=>ns.map(n=>{const span=n.querySelector('span'),r=n.getBoundingClientRect(),cs=getComputedStyle(span);return {text:span.textContent,nowrap:cs.whiteSpace,scroll:n.scrollWidth,client:n.clientWidth,left:r.left,right:r.right,top:r.top,bottom:r.bottom};}));
-     labels.forEach(n=>{assert.equal(n.nowrap,'nowrap');assert(n.scroll<=n.client+2);assert(n.left>=-1&&n.right<=w+1,'Label outside viewport');});
-     for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];assert(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top,'Measured labels overlap');}
+     await page.setViewportSize({width:w,height:900});
+     await page.waitForFunction(expected=>{
+      if(innerWidth!==expected||Math.abs(document.querySelector('#stageWrap').getBoundingClientRect().width-expected)>1)return false;
+      return [...document.querySelectorAll('.nav-marker')].every(node=>{const r=node.getBoundingClientRect();return r.left>=-1&&r.right<=expected+1;});
+     },w,{timeout:5000,polling:50});
+     const labels=await page.locator('.nav-marker').evaluateAll(ns=>ns.map(n=>{const span=n.querySelector('span'),r=n.getBoundingClientRect(),cs=getComputedStyle(span),stage=document.querySelector('#stageWrap').getBoundingClientRect();return {text:span.textContent,nowrap:cs.whiteSpace,scroll:n.scrollWidth,client:n.clientWidth,left:r.left,right:r.right,top:r.top,bottom:r.bottom,viewport:innerWidth,stageWidth:stage.width};}));
+     labels.forEach(n=>{assert.equal(n.nowrap,'nowrap');assert(n.scroll<=n.client+2);assert(n.left>=-1&&n.right<=w+1,`Label outside ${w}px viewport: ${JSON.stringify(n)}`);});
+     for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];assert(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top,`Measured labels overlap at ${w}px: ${JSON.stringify([a,b])}`);}
     }
     await page.setViewportSize({width,height:900});
    }

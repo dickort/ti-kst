@@ -126,7 +126,7 @@ s=s[:a]+''' function processMeshes(root){
  }
 ''' + s[b:]
 rep('renderer.shadowMap.enabled=false;studio();resize();loadModel();','renderer.shadowMap.enabled=false;resize();loadModel();')
-rep('renderer.render(scene,camera);updateMarkers();stats.frames++;dirty=false;', 'renderer.render(scene,camera);updateMarkers();stats.frames++;if(modelReady&&stats.firstModelMs===null)stats.firstModelMs=performance.now()-startedAt;dirty=false;')
+rep("renderer.render(scene,camera);updateMarkers();stats.frames++;if(modelReady&&!stage.classList.contains('nav-first-frame')){stage.classList.add('nav-first-frame');hero.dataset.firstFrame='true';setTimeout(()=>{if(modelReady)stage.classList.add('nav-handoff-complete');},450);}dirty=false;", "renderer.render(scene,camera);updateMarkers();stats.frames++;if(modelReady&&stats.firstModelMs===null)stats.firstModelMs=performance.now()-startedAt;if(modelReady&&!stage.classList.contains('nav-first-frame')){stage.classList.add('nav-first-frame');hero.dataset.firstFrame='true';setTimeout(()=>{if(modelReady)stage.classList.add('nav-handoff-complete');},450);}dirty=false;")
 rep('const resizeObserver=new ResizeObserver(resize);','document.fonts?.ready.then(()=>invalidate());\n const resizeObserver=new ResizeObserver(resize);')
 rep('...nav,rigReady,modelReady,doorProgress,','...nav,rigReady,modelReady,cabinReady,quality,streaming:!!assets,doorProgress,')
 rep('moving:!!flight||!!doorMotion,','moving:!!flight||!!doorMotion||nav.phase===\'loading-cabin\',')

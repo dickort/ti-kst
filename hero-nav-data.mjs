@@ -91,10 +91,20 @@ export function calloutLayout(count,{left,right,top,bottom},compact=false,sizes=
   const used=rowHeights.reduce((a,b)=>a+b,0),spacing=Math.max(gap,(height-used)/rows);
   const total=used+spacing*(rows-1);let y=top+Math.max(0,(height-total)/2);
   const centers=rowHeights.map(h=>{const center=y+h/2;y+=h+spacing;return center;});
-  return sizes.map((s,i)=>({
+  const layout=sizes.map((s,i)=>({
    x:twoColumns?(i%2===0?left+columns[0]/2+(width-columns[0]-columns[1]-gap)/4:right-columns[1]/2-(width-columns[0]-columns[1]-gap)/4):(left+right)/2,
    y:centers[Math.floor(i/(twoColumns?2:1))]
   }));
+  // Font swaps and live viewport changes can alter intrinsic pill widths
+  // between two frames. Clamp the measured box itself, not only its anchor.
+  return layout.map((position,i)=>{
+   const halfW=sizes[i].w/2,halfH=sizes[i].h/2;
+   const minX=left+halfW,maxX=right-halfW,minY=top+halfH,maxY=bottom-halfH;
+   return {
+    x:minX<=maxX?Math.min(maxX,Math.max(minX,position.x)):(left+right)/2,
+    y:minY<=maxY?Math.min(maxY,Math.max(minY,position.y)):(top+bottom)/2
+   };
+  });
  }
  const result=[], columns=compact ? 2 : 2;
  const rows=Math.ceil(count/columns), width=right-left;

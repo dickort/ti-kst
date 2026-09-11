@@ -6,7 +6,12 @@ import {services} from './hero-service-catalog.mjs';
 
 // One renderer and one owner of the camera; never run the legacy hero alongside.
 const hero=document.querySelector('.hero');
-if(hero) mountServiceNavigator(hero);
+if(hero){
+ hero.dataset.navBoot='poster';
+ // Give the lightweight same-model poster one paint before WebGL setup can
+ // occupy the main thread. Model and module preloads have already started.
+ requestAnimationFrame(()=>requestAnimationFrame(()=>mountServiceNavigator(hero)));
+}
 export function mountServiceNavigator(hero){
  const stage=hero.querySelector('#stageWrap'),compact=()=>innerWidth<820;
  const config=window.TI_NAV_CONFIG||{rig:false,version:'local'};
@@ -23,6 +28,7 @@ export function mountServiceNavigator(hero){
  camera.position.set(0,1.95,6.9);camera.lookAt(look);
  hero.classList.add('nav-enabled');stage.classList.remove('premium-loading','premium-ready');
  stage.querySelectorAll('canvas,.hotspot,.premium-hotspot,.premium-car-loading,.model-credit').forEach(n=>n.remove());
+ const poster=stage.querySelector('.nav-poster'),posterImage=poster?.querySelector('img');
  const canvas=document.createElement('canvas');canvas.className='nav-canvas';canvas.setAttribute('aria-label','Mercedes-AMG: вращение перетаскиванием, масштаб колесом или двумя пальцами');stage.append(canvas);
  const loading=document.createElement('div');loading.className='nav-loading';loading.setAttribute('role','status');loading.textContent='Загружаем Mercedes · 0%';stage.append(loading);
  const wires=document.createElementNS('http://www.w3.org/2000/svg','svg');wires.classList.add('nav-wires');wires.setAttribute('aria-hidden','true');stage.append(wires);
@@ -185,7 +191,9 @@ export function mountServiceNavigator(hero){
   const mat=new THREE.LineBasicMaterial({color:0xd8ff3e,transparent:true,opacity:.75});
   const points=[[-.38,.624,.45],[-.2,.646,.43],[0,.65,.41],[.22,.64,.39],[.40,.612,.40]].map(p=>new THREE.Vector3(...p));ambientGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),mat));ambientGroup.visible=false;
  }
- async function loadModel(){const token=++loadingToken;loading.hidden=false;modelReady=false;hero.dataset.navReady='loading';
+ function posterReady(){hero.dataset.posterReady='true';}
+ if(posterImage?.complete&&posterImage.naturalWidth)posterReady();else posterImage?.addEventListener('load',posterReady,{once:true});
+ async function loadModel(){const token=++loadingToken;loading.hidden=false;modelReady=false;stage.classList.remove('nav-model-ready','nav-first-frame','nav-handoff-complete');hero.dataset.firstFrame='false';hero.dataset.navReady='loading';
   const url=config.rig?`./assets/amg_driver_cabin_${compact()?'mobile':'desktop'}_v3.glb?v=${encodeURIComponent(config.version)}`:'./assets/mercedes_amg_gt63s_mobile.glb';
   const loader=new GLTFLoader();
   try{const gltf=await loader.loadAsync(url,e=>{if(e.total)loading.textContent=`Загружаем Mercedes · ${Math.round(e.loaded/e.total*100)}%`;});if(token!==loadingToken||disposed)return;
@@ -207,11 +215,11 @@ export function mountServiceNavigator(hero){
    const t=targetFor(nav.direction||'home');camera.position.copy(t.eye);look.copy(t.target);frameX=t.x;camera.lookAt(look);renderUI();resize();
   }catch(error){console.error('TI 3D load:',error);loading.innerHTML='<span>3D временно недоступно. Услуги доступны в меню.</span> <button type="button">Повторить</button>';loading.querySelector('button').onclick=loadModel;hero.dataset.navReady='error';rigReady=false;renderUI();}
  }
- function resize(){if(!renderer)return;const a=area();renderer.setSize(Math.max(1,a.w),Math.max(1,a.h),false);camera.aspect=Math.max(1,a.w)/Math.max(1,a.h);camera.updateProjectionMatrix();wires.setAttribute('viewBox',`0 0 ${a.w} ${a.h}`);invalidate();}
+ function resize(){if(!renderer)return;const a=area();renderer.setSize(Math.max(1,a.w),Math.max(1,a.h),false);camera.aspect=Math.max(1,a.w)/Math.max(1,a.h);camera.updateProjectionMatrix();wires.setAttribute('viewBox',`0 0 ${a.w} ${a.h}`);if(modelReady){camera.updateMatrixWorld();scene.updateMatrixWorld();updateMarkers();}invalidate();}
  function tick(now){raf=0;if(disposed||!visible||document.hidden)return;
   if(flight){const m=flight,t=Math.min(1,Math.max(0,(now-m.start)/m.duration)),e=ease(t);look.lerpVectors(m.from,m.to,e);const s=new THREE.Spherical(THREE.MathUtils.lerp(m.a.radius,m.b.radius,e),THREE.MathUtils.lerp(m.a.phi,m.b.phi,e),THREE.MathUtils.lerp(m.a.theta,m.b.theta,e));camera.position.setFromSpherical(s).add(look);frameX=THREE.MathUtils.lerp(m.x0,m.x1,e);camera.lookAt(look);dirty=true;if(t===1){stats.lastFlightMs=now-m.start;flight=null;}}
   if(doorMotion&&door){const m=doorMotion,t=Math.min(1,Math.max(0,(now-m.start)/m.duration));doorProgress=THREE.MathUtils.lerp(m.from,m.to,ease(t));door.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*doorProgress));dirty=true;if(t===1){doorMotion=null;m.done?.();}}
-  if(dirty&&renderer){const a=area();camera.setViewOffset(a.w,a.h,(.5-frameX)*a.w,0,a.w,a.h);camera.updateMatrixWorld();scene.updateMatrixWorld();renderer.render(scene,camera);updateMarkers();stats.frames++;dirty=false;}
+  if(dirty&&renderer){const a=area();camera.setViewOffset(a.w,a.h,(.5-frameX)*a.w,0,a.w,a.h);camera.updateMatrixWorld();scene.updateMatrixWorld();renderer.render(scene,camera);updateMarkers();stats.frames++;if(modelReady&&!stage.classList.contains('nav-first-frame')){stage.classList.add('nav-first-frame');hero.dataset.firstFrame='true';setTimeout(()=>{if(modelReady)stage.classList.add('nav-handoff-complete');},450);}dirty=false;}
   lastTime=now;if(flight||doorMotion||pointers.size)raf=requestAnimationFrame(tick);
  }
  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);window.addEventListener('resize',resize);
