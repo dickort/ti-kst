@@ -3,84 +3,42 @@ from pathlib import Path
 path = Path('premium-car.js')
 text = path.read_text(encoding='utf-8')
 
-repls = []
+marker = "  const directionAngles = {"
+if marker not in text:
+    raise SystemExit('directionAngles marker not found')
 
-repls.append((
-"""  const parkingLightMaterials = new Map();
-  let parkingFlashStartedAt = -Infinity;
-  let lastParkingFlashAt = -Infinity;""",
-"""  const parkingLightMaterials = new Map();
-  const parkingFx = [];
-  let parkingFxGroup = null;
-  let parkingFlashStartedAt = -Infinity;
-  let lastParkingFlashAt = -Infinity;"""
-))
+if 'const parkingFx = [];' not in text:
+    text = text.replace(
+        "  const parkingLightMaterials = new Map();\n  let parkingFlashStartedAt = -Infinity;",
+        "  const parkingLightMaterials = new Map();\n  const parkingFx = [];\n  let parkingFxGroup = null;\n  let parkingFlashStartedAt = -Infinity;",
+        1
+    )
 
-repls.append((
-"""  function registerParkingLightMaterial(material) {
-    if (!material || !/^(Headlight|Brakelight)$/i.test(material.name || '')) return;""",
-"""  function registerParkingLightMaterial(material, nodeName = '') {
-    const lightIdentity = `${material?.name || ''} ${nodeName || ''}`;
-    if (!material || !/(headlight|brakelight|signallight)/i.test(lightIdentity)) return;"""
-))
-
-repls.append((
-"""  function flashParkingLights() {
-    if (reducedMotion || !parkingLightMaterials.size) return;""",
-"""  function flashParkingLights() {
-    if (reducedMotion || (!parkingLightMaterials.size && !parkingFx.length)) return;"""
-))
-
-insert_after = """  function updateParkingLights(now) {
-    if (!parkingLightMaterials.size) return;
-    const elapsed = now - parkingFlashStartedAt;
-    let pulse = 0;
-
-    if (elapsed >= 0 && elapsed < 900) {
-      const bell = (center, width) => Math.exp(-Math.pow((elapsed - center) / width, 2));
-      pulse = Math.max(bell(120, 68), bell(420, 82));
-    }
-
-    parkingLightMaterials.forEach(({ material, baseIntensity }) => {
-      material.emissiveIntensity = baseIntensity + pulse * 6.4;
-    });
-  }"""
-
-if insert_after not in text:
-    raise SystemExit('Could not find updateParkingLights block')
-
-fx_code = insert_after + """
-
-  function createParkingLightFx(bounds) {
-    if (!bounds || bounds.isEmpty()) return;
+fx_code = '''  function createParkingLightFx() {
     if (parkingFxGroup) carRig.remove(parkingFxGroup);
     parkingFx.length = 0;
     parkingFxGroup = new THREE.Group();
 
-    const size = bounds.getSize(new THREE.Vector3());
-    const y = bounds.min.y + size.y * 0.43;
-    const z = size.z * 0.34;
-    const radius = Math.max(0.035, Math.min(0.07, size.z * 0.028));
-    const positions = [
-      { x: bounds.max.x + radius * 0.2, z: z, color: 0xe9f3ff },
-      { x: bounds.max.x + radius * 0.2, z: -z, color: 0xe9f3ff },
-      { x: bounds.min.x - radius * 0.2, z: z, color: 0xff2032 },
-      { x: bounds.min.x - radius * 0.2, z: -z, color: 0xff2032 }
+    const entries = [
+      { x:  2.45, y: 0.72, z:  0.64, color: 0xf3f8ff },
+      { x:  2.45, y: 0.72, z: -0.64, color: 0xf3f8ff },
+      { x: -2.45, y: 0.72, z:  0.64, color: 0xff273a },
+      { x: -2.45, y: 0.72, z: -0.64, color: 0xff273a }
     ];
 
-    positions.forEach((item) => {
-      const material = new THREE.MeshBasicMaterial({
+    entries.forEach((item) => {
+      const mat = new THREE.MeshBasicMaterial({
         color: item.color,
         transparent: true,
         opacity: 0,
         depthWrite: false,
         blending: THREE.AdditiveBlending
       });
-      const glow = new THREE.Mesh(new THREE.SphereGeometry(radius, 20, 12), material);
-      glow.position.set(item.x, y, item.z);
-      glow.renderOrder = 20;
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.065, 18, 10), mat);
+      glow.position.set(item.x, item.y, item.z);
+      glow.renderOrder = 30;
 
-      const light = new THREE.PointLight(item.color, 0, 2.4, 2);
+      const light = new THREE.PointLight(item.color, 0, 2.8, 2);
       light.position.copy(glow.position);
 
       parkingFxGroup.add(glow, light);
@@ -99,41 +57,22 @@ fx_code = insert_after + """
       pulse = Math.max(bell(120, 72), bell(430, 88));
     }
     parkingFx.forEach(({ glow, light }) => {
-      glow.material.opacity = pulse * 0.92;
-      glow.scale.setScalar(0.72 + pulse * 0.78);
-      light.intensity = pulse * 11;
+      glow.material.opacity = pulse * 0.96;
+      glow.scale.setScalar(0.7 + pulse * 1.05);
+      light.intensity = pulse * 13;
     });
-  }"""
-text = text.replace(insert_after, fx_code, 1)
+  }
 
-repls.append((
-"""          registerParkingLightMaterial(material);""",
-"""          registerParkingLightMaterial(material, node.name || '');"""
-))
+'''
 
-repls.append((
-"""      carModel.position.x -= center.x;
-      carModel.position.z -= center.z;
-      carModel.position.y -= bounds.min.y;
-      carRig.add(carModel);""",
-"""      carModel.position.x -= center.x;
-      carModel.position.z -= center.z;
-      carModel.position.y -= bounds.min.y;
-      bounds = new THREE.Box3().setFromObject(carModel);
-      createParkingLightFx(bounds);
-      carRig.add(carModel);"""
-))
+if 'function createParkingLightFx()' not in text:
+    text = text.replace(marker, fx_code + marker, 1)
 
-repls.append((
-"""    updateParkingLights(now);""",
-"""    updateParkingLights(now);
-    updateParkingFx(now);"""
-))
+if 'createParkingLightFx();' not in text:
+    text = text.replace('      carRig.add(carModel);', '      carRig.add(carModel);\n      createParkingLightFx();', 1)
 
-for old, new in repls:
-    if old not in text:
-        raise SystemExit(f'Patch target not found:\n{old[:180]}')
-    text = text.replace(old, new, 1)
+if 'updateParkingFx(now);' not in text:
+    text = text.replace('    updateParkingLights(now);', '    updateParkingLights(now);\n    updateParkingFx(now);', 1)
 
 path.write_text(text, encoding='utf-8')
-print('premium-car.js patched: robust headlight/brakelight/signallight flash + glow')
+print('premium-car.js patched: robust light glow FX added')
