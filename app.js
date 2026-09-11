@@ -381,15 +381,7 @@ document.addEventListener("keydown", event => {
   }
 });
 
-const revealObserver = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add("visible");
-      revealObserver.unobserve(entry.target);
-    }
-  });
-}, { threshold: 0.12 });
-document.querySelectorAll(".reveal").forEach(node => revealObserver.observe(node));
+// Section reveals are coordinated by section-motion.js on all pages.
 
 // ---------------------------------------------------------------------------
 // Procedural 3D concept car. Production asset will replace this group later.

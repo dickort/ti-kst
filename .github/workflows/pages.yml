@@ -37,6 +37,7 @@ jobs:
           python3 -m http.server 4173 --directory _site >/tmp/ti-nav-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
+          node scripts/qa-site-polish.cjs "$RUNNER_TEMP/ti-nav-deps"
           node scripts/qa-service-navigator.cjs "$RUNNER_TEMP/ti-nav-deps"
           node scripts/qa-fast-hero.cjs "$RUNNER_TEMP/ti-nav-deps"
           node scripts/qa-hero-regression.cjs "$RUNNER_TEMP/ti-nav-deps"

@@ -63,7 +63,7 @@ replace('const m=flight,t=Math.min(1,Math.max(0,(now-m.start)/m.duration)),e=eas
 replace('const m=doorMotion,t=Math.min(1,Math.max(0,(now-m.start)/m.duration));','const m=doorMotion;m.elapsed=(m.elapsed||0)+Math.min(50,Math.max(0,now-Math.max(m.last??m.start,m.start)));m.last=now;const t=Math.min(1,m.elapsed/m.duration);')
 (out/'hero-service-navigator.js').write_text(js,encoding='utf-8')
 css=(root/'styles.css').read_text(encoding='utf-8')
-for name in ('typography-overrides.css','section-motion.css','hero-service-navigator.css'): css+='\n'+(root/name).read_text(encoding='utf-8')
+for name in ('section-motion.css','hero-service-navigator.css'): css+='\n'+(root/name).read_text(encoding='utf-8')
 (out/'styles.css').write_text(css,encoding='utf-8')
 html=(root/'index.html').read_text(encoding='utf-8').replace('class="hero"','class="hero nav-enabled"',1)
 # Restore the v55-sized headline, with intentional lines instead of overflowing
