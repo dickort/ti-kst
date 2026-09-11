@@ -31,16 +31,16 @@ replacement = '''  try {
       node.castShadow = true;
       node.receiveShadow = true;
       const materials = Array.isArray(node.material) ? node.material : [node.material];
-      materials.filter(Boolean).forEach((material) => {
-        if (/paint/i.test(material.name || "")) {
-          material.color?.set(0x101318);
-          if ("metalness" in material) material.metalness = Math.max(material.metalness ?? 0, 0.76);
-          if ("roughness" in material) material.roughness = 0.17;
-          if ("clearcoat" in material) material.clearcoat = 1;
-          if ("clearcoatRoughness" in material) material.clearcoatRoughness = 0.07;
-          material.needsUpdate = true;
-        }
-      });
+        materials.filter(Boolean).forEach((material) => {
+          if (/paint/i.test(material.name || "")) {
+            material.color?.set(0x101318);
+            if ("metalness" in material) material.metalness = Math.max(material.metalness ?? 0, 0.76);
+            if ("roughness" in material) material.roughness = 0.17;
+            if ("clearcoat" in material) material.clearcoat = 1;
+            if ("clearcoatRoughness" in material) material.clearcoatRoughness = 0.07;
+            material.needsUpdate = true;
+          }
+        });
     });
 
     let bounds = new THREE.Box3().setFromObject(carModel);
