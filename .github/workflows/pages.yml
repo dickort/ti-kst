@@ -29,6 +29,9 @@ jobs:
           cat typography-overrides.css >> styles.css
           cat premium-car.css >> styles.css
 
+      - name: Apply cinematic car motion
+        run: python3 patch-premium-motion.py
+
       - name: Inject homepage modules
         run: |
           sed -i 's#<script type="module" src="./app.js"></script>#<script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script type="module" src="./premium-car.js"></script>#' index.html
