@@ -1,5 +1,5 @@
 /* Premium 3D car layer — progressive enhancement over the procedural fallback */
-.stage-wrap { isolation:isolate; }
+.stage-wrap { isolation:isolate; transition:right .7s cubic-bezier(.22,.75,.18,1), bottom .7s cubic-bezier(.22,.75,.18,1), top .7s cubic-bezier(.22,.75,.18,1); }
 .premium-car-canvas{
   position:absolute;
   inset:0;
@@ -102,12 +102,96 @@
 }
 .model-credit:hover{color:rgba(255,255,255,.5)}
 
+/* Keep the selected car visible instead of covering it with the service panel. */
+@media(min-width:1181px){
+  .hero:has(.direction-panel.open) .stage-wrap{right:min(410px,30vw)}
+  .direction-panel{
+    width:min(390px,29vw);
+    max-height:min(650px,72vh);
+    padding:28px;
+    overflow:hidden;
+  }
+  .direction-panel h2{font-size:clamp(26px,2vw,38px);line-height:1.02}
+  .direction-panel>p{margin:14px 0 0}
+  .panel-index{margin-bottom:26px}
+  .panel-services{max-height:250px;overflow-y:auto;overscroll-behavior:contain;padding-right:5px;margin:18px 0 22px}
+  .panel-services::-webkit-scrollbar{width:4px}
+  .panel-services::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:8px}
+}
+
+@media(max-width:1180px){
+  .hero:has(.direction-panel.open) .stage-wrap{
+    left:0;
+    right:0;
+    top:clamp(210px,27vh,285px);
+    bottom:42svh;
+  }
+  .direction-panel{
+    position:absolute;
+    left:max(var(--pad),18px);
+    right:max(var(--pad),18px);
+    top:auto;
+    bottom:76px;
+    width:auto;
+    max-height:min(40svh,390px);
+    padding:18px 20px 16px;
+    border-radius:22px;
+    transform:translateY(22px);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .direction-panel.open{transform:none}
+  .panel-close{right:12px;top:8px}
+  .panel-index{margin-bottom:8px}
+  .panel-kicker{margin-bottom:7px}
+  .direction-panel h2{font-size:clamp(23px,4.5vw,31px);line-height:1.02;max-width:82%}
+  .direction-panel>p{font-size:12px;line-height:1.45;margin:10px 0 8px;max-width:760px}
+  .panel-services{
+    display:flex!important;
+    gap:8px;
+    margin:8px -2px 10px;
+    border-top:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    flex:0 0 auto;
+    scrollbar-width:none;
+    padding:2px 2px 5px;
+  }
+  .panel-services::-webkit-scrollbar{display:none}
+  .panel-service{
+    flex:0 0 auto;
+    min-width:max-content;
+    padding:9px 11px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    gap:8px;
+    background:rgba(255,255,255,.025);
+    font-size:11px;
+  }
+  .panel-service button{font-size:14px}
+  .panel-actions{display:none}
+}
+
 @media(max-width:820px){
   .premium-hotspot .label{display:none}
   .premium-hotspot .dot{width:34px;height:34px;box-shadow:0 0 0 6px rgba(255,255,255,.05)}
   .model-credit{display:none}
+  .hero:has(.direction-panel.open) .stage-wrap{top:240px;bottom:39svh}
+  .direction-panel{max-height:min(37svh,330px);bottom:72px}
+  .direction-panel h2{font-size:24px}
+}
+
+@media(max-width:560px){
+  .hero:has(.direction-panel.open) .stage-wrap{top:205px;bottom:36svh}
+  .direction-panel{left:12px;right:12px;bottom:68px;max-height:34svh;padding:15px 16px 13px}
+  .direction-panel>p{display:none}
+  .direction-panel h2{font-size:21px;max-width:88%}
+  .panel-index{font-size:9px}
+  .panel-kicker{font-size:9px}
+  .panel-service{padding:8px 10px;font-size:10px}
 }
 
 @media(prefers-reduced-motion:reduce){
-  .premium-car-canvas,.premium-hotspot{transition:none}
+  .premium-car-canvas,.premium-hotspot,.stage-wrap{transition:none}
 }
