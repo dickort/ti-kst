@@ -34,6 +34,9 @@ jobs:
       - name: Apply AMG v46 scene refinements
         run: python3 patch-amg-v43.py
 
+      - name: Apply final AMG hero polish
+        run: python3 patch-final-hero.py
+
       - name: Inject homepage modules
         run: |
           sed -i 's#<script type="module" src="./app.js"></script>#<script>document.getElementById("stageWrap")?.classList.add("premium-loading");</script>\n  <script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script src="./section-motion.js"></script>\n  <script type="module" src="./premium-car.js"></script>#' index.html
