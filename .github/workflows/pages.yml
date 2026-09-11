@@ -13,6 +13,10 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.51.1-noble
+      options: --shm-size=1gb
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,8 +32,6 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/ti-nav-deps/node_modules" "$RUNNER_TEMP/ti-nav-deps/node_modules/.bin/esbuild" _site/hero-service-navigator.js --bundle --format=esm --target=es2022 --minify --outfile=_site/hero-service-navigator.bundle.js
           node --check --input-type=module < _site/app.js
           node scripts/test-service-navigator.mjs
-      - name: Install browser for interaction checks
-        run: "$RUNNER_TEMP/ti-nav-deps/node_modules/.bin/playwright install --with-deps chromium"
       - name: Test desktop and mobile navigation
         run: |
           python3 -m http.server 4173 --directory _site >/tmp/ti-nav-http.log 2>&1 &
