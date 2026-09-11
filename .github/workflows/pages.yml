@@ -37,6 +37,18 @@ jobs:
       - name: Apply final AMG hero polish
         run: python3 patch-final-hero.py
 
+      - name: Assemble verified driver-door model when assets are present
+        run: python3 scripts/assemble-driver-door.py
+
+      - name: Validate driver-door controls
+        run: |
+          node --check --input-type=module < hero-driver-door.js
+          node --check --input-type=module < driver-door-controller-v3.js
+          node --check --input-type=module < premium-car.js
+          node --check --input-type=module < app.js
+          npm install --prefix "$RUNNER_TEMP/ti-door-qa" --no-audit --no-fund --ignore-scripts three@0.169.0 jsdom@26.0.0
+          node scripts/test-driver-door.mjs "$RUNNER_TEMP/ti-door-qa"
+
       - name: Inject homepage modules
         run: |
           sed -i 's#<script type="module" src="./app.js"></script>#<script>document.getElementById("stageWrap")?.classList.add("premium-loading");</script>\n  <script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script src="./section-motion.js"></script>\n  <script type="module" src="./premium-car.js"></script>#' index.html

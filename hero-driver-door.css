@@ -1,0 +1,35 @@
+/* Driver-door v3: the original three directions remain the main navigation. */
+.interior-entry[hidden],.driver-interior-panel[hidden]{display:none!important}
+.interior-entry{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;border:1px solid rgba(216,255,62,.28);border-radius:12px;background:rgba(216,255,62,.05);color:#d8ff3e;padding:12px 14px;margin:16px 0 4px;font:600 12px/1.4 "Inter",sans-serif;cursor:pointer}
+.interior-entry:hover{background:rgba(216,255,62,.12)}
+.hero.interior-active .hero-copy{opacity:0;pointer-events:none}
+.hero.interior-active .stage-vignette{opacity:.18}
+.hero.interior-active .direction-panel{visibility:hidden;pointer-events:none}
+.hero.interior-active .premium-hotspot{visibility:hidden!important;pointer-events:none!important}
+.hero.interior-active .stage-wrap{transition:none!important}
+.hero.interior-active .model-credit{display:none}
+.driver-interior-panel{position:absolute;z-index:24;top:110px;right:var(--pad,32px);width:clamp(290px,25vw,360px);max-height:calc(100% - 210px);overflow-y:auto;box-sizing:border-box;padding:26px;border:1px solid rgba(255,255,255,.16);border-radius:24px;background:rgba(12,13,14,.97);color:#f5f5f3;scrollbar-width:thin;overscroll-behavior:contain}
+.interior-close{position:absolute;right:15px;top:12px;border:0;padding:4px 8px;color:#ccc;background:none;font:28px/1 sans-serif;cursor:pointer}
+.interior-kicker{margin:4px 22px 14px 0;font:600 10px/1.5 "Inter",sans-serif;letter-spacing:.13em;color:#d8ff3e}
+.driver-interior-panel h2{font:700 clamp(26px,2.4vw,36px)/1.07 "Inter",sans-serif;letter-spacing:-.02em;margin:0 0 12px}
+.interior-status{font:400 11px/1.5 "Inter",sans-serif;color:#a6a7a4;margin:0 0 16px;min-height:32px}
+.interior-views{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px}
+.interior-views button{border:1px solid rgba(255,255,255,.13);border-radius:20px;background:#191a1b;padding:9px 6px;color:#e1e2de;font:500 11px/1.2 "Inter",sans-serif;cursor:pointer}
+.interior-views button.active,.interior-views button:hover{border-color:#d8ff3e;color:#d8ff3e}
+.interior-views button:disabled{opacity:.4;cursor:wait}
+.interior-services{display:grid}
+.interior-services a{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-top:1px solid rgba(255,255,255,.11);font:400 12px/1.45 "Inter",sans-serif;color:#e1e2de;text-decoration:none}
+.interior-services a span{color:#81847c}.interior-services a:hover{color:#d8ff3e}
+.interior-return{display:block;width:100%;margin-top:17px;border:0;border-radius:24px;background:#d8ff3e;color:#0a0c06;padding:12px;font:600 11px/1.4 "Inter",sans-serif;cursor:pointer}
+.interior-entry:focus-visible,.driver-interior-panel :focus-visible{outline:2px solid #d8ff3e;outline-offset:3px}
+@media(max-width:1180px){
+.hero.interior-active .stage-wrap{left:0!important;right:0!important;top:82px!important;bottom:300px!important;min-height:160px}
+.driver-interior-panel{top:auto;bottom:74px;left:16px;right:16px;width:auto;max-height:220px;padding:16px 18px;border-radius:20px}
+.driver-interior-panel h2{font-size:22px;margin-bottom:5px}.driver-interior-panel h2 br{display:none}
+.interior-kicker{font-size:9px;margin:0 22px 6px 0}.interior-status{min-height:0;margin:0 0 10px;font-size:10px}
+.interior-views{display:flex;gap:6px;margin-bottom:10px}.interior-views button{flex:1;font-size:10px;padding:8px 4px}
+.interior-services{display:flex;gap:7px;overflow:auto;padding-bottom:5px;scrollbar-width:thin}
+.interior-services a{flex:0 0 auto;border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:8px 10px;font-size:10px}
+.interior-return{display:none}.interior-entry{font-size:11px;padding:9px 12px;margin:8px 0 2px}.interior-close{top:10px;right:9px}}
+@media(max-width:560px){.hero.interior-active .stage-wrap{bottom:284px!important;top:76px!important}.driver-interior-panel{left:12px;right:12px;bottom:68px}}
+@media(max-height:600px) and (min-width:821px){.driver-interior-panel{top:78px;bottom:72px;max-height:calc(100% - 150px)}}
