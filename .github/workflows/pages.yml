@@ -30,15 +30,6 @@ jobs:
           cat premium-car.css >> styles.css
           cat section-motion.css >> styles.css
 
-      - name: Build custom M5 F90 scene model
-        run: python3 patch-custom-m5.py
-
-      - name: Apply cinematic car motion
-        run: python3 patch-premium-motion.py
-
-      - name: Apply robust vehicle light effect
-        run: python3 patch-headlight-fx.py
-
       - name: Inject homepage modules
         run: |
           sed -i 's#<script type="module" src="./app.js"></script>#<script src="./navigation-overrides.js"></script>\n  <script type="module" src="./app.js"></script>\n  <script src="./section-motion.js"></script>\n  <script type="module" src="./premium-car.js"></script>#' index.html
@@ -51,7 +42,6 @@ jobs:
           sed -i "s#./section-motion.js#./section-motion.js?v=${VERSION}#g" index.html
           sed -i "s#./app.js#./app.js?v=${VERSION}#g" index.html
           sed -i "s#./premium-car.js#./premium-car.js?v=${VERSION}#g" index.html
-          sed -i "s#./m5-f90-model.js#./m5-f90-model.js?v=${VERSION}#g" premium-car.js
           sed -i "s#./service-page.css#./service-page.css?v=${VERSION}#g" service.html
           sed -i "s#./service-page.js#./service-page.js?v=${VERSION}#g" service.html
           sed -i "s#./styles.css#./styles.css?v=${VERSION}#g" direction.html
