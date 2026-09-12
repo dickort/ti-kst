@@ -4,6 +4,16 @@ import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniform
 import {MAP,VIEWS,ease,shortest,resolveZone,calloutLayout,serviceNote,UNSHOWN_TUNING} from './hero-nav-data.mjs';
 import {services} from './hero-service-catalog.mjs';
 
+const WRAP_COLORS=[
+ {id:'black',label:'Чёрный',hex:'#050505',matte:false},
+ {id:'white',label:'Белый',hex:'#e8e6df',matte:false},
+ {id:'red',label:'Красный',hex:'#a70b19',matte:false},
+ {id:'blue',label:'Синий',hex:'#164fb0',matte:false},
+ {id:'green',label:'Зелёный',hex:'#126044',matte:false},
+ {id:'graphite',label:'Графит',hex:'#30343a',matte:true},
+ {id:'grey',label:'Серый',hex:'#858b91',matte:true},
+];
+
 // One renderer and one owner of the camera; never run the legacy hero alongside.
 const hero=document.querySelector('.hero');
 if(hero){
@@ -22,6 +32,9 @@ export function mountServiceNavigator(hero){
  let blackpack=true,tinted=true,rigReady=false,modelReady=false,loadingToken=0;
  let markers=[],stats={frames:0,flights:0,lastFlightMs:0,rig:false};
  const chromeMaterials=[],glassMaterials=[];
+ const bodyMaterials=[];let wrapColor='black';
+ function paintBody(m,color){m.color.set(color.hex);m.metalness=color.matte?.12:.28;m.roughness=color.matte?.78:.26;m.clearcoat=color.matte?.04:.55;m.clearcoatRoughness=color.matte?.7:.18;}
+ function setWrap(id){const color=WRAP_COLORS.find(c=>c.id===id);if(!color)return;wrapColor=id;bodyMaterials.forEach(m=>paintBody(m,color));invalidate();}
  const point=new THREE.Vector3(),look=new THREE.Vector3(0,.65,0);
  const camera=new THREE.PerspectiveCamera(34,1,.05,90);
  let frameX=.68;
@@ -57,7 +70,7 @@ export function mountServiceNavigator(hero){
  function animateDoor(to,duration=1050,delay=0,done=null){if(!door){done?.();return;}
   doorMotion={from:doorProgress,to,start:performance.now()+delay,duration:animateViews?duration:1,done};invalidate();
  }
- function clearEffects(){setChrome(true);setTint(true);if(ambientGroup)ambientGroup.visible=false;}
+ function clearEffects(){setWrap('black');setChrome(true);setTint(true);if(ambientGroup)ambientGroup.visible=false;}
  function setChrome(on){blackpack=on;chromeMaterials.forEach(m=>{m.color.set(on?0x050505:0xa8a8a8);m.metalness=on?.24:.95;m.roughness=on?.24:.19;m.envMapIntensity=on?.5:1;});invalidate();}
  function setTint(on){tinted=on;glassMaterials.forEach(m=>{m.color.set(on?0x080808:0x343434);m.opacity=1;m.transparent=false;m.depthWrite=true;});invalidate();}
  function applyDirection(key){clearEffects();nav.direction=key;nav.zone=null;nav.inside=false;nav.service=null;nav.phase='ready';
@@ -100,6 +113,7 @@ export function mountServiceNavigator(hero){
    body=`<div class="nav-service-choices">${z.services.map(slug=>button('service',slug,services[slug].title,slug===nav.service?'selected':'')).join('')}</div><h2>${escape(s.title)}</h2><p>${escape(s.lead)}</p>`;
    if(z.effect==='chrome')body+=`<div class="nav-demo">${button('chrome','on','Антихром','selected')}${button('chrome','off','Хром')}</div><small>Визуальное сравнение отделки. При выходе возвращается антихром.</small>`;
    if(z.effect==='tint')body+=`<div class="nav-demo">${button('tint','on','Тёмная','selected')}${button('tint','off','Светлее')}</div><small>Условный пример оттенка, не показатель светопропускаемости плёнки.</small>`;
+   if(z.id==='ppf')body+=`<fieldset class="nav-wrap"><legend>Примерьте цвет кузова</legend>${[false,true].map(matte=>`<div class="nav-wrap-finish">${matte?'Матовые · 2':'Глянцевые · 5'}</div><div class="nav-wrap-colors">${WRAP_COLORS.filter(c=>c.matte===matte).map(c=>`<button type="button" data-nav-action="wrap" data-value="${c.id}" aria-pressed="${wrapColor===c.id}" aria-label="${c.label}, ${matte?'матовый':'глянцевый'}"><i aria-hidden="true" style="--wrap-color:${c.hex}" class="${matte?'matte':''}"></i><span>${c.label}</span></button>`).join('')}</div>`).join('')}<small>Пример оттенка на модели. Цвет и фактуру плёнки подбираем по образцам.</small></fieldset>`;
    if(z.closer&&rigReady)body+=button('closer','','Показать мягкое закрывание','nav-demo-button')+'<small>Демонстрация механики, не модель конкретного комплекта доводчиков.</small>';
    if(z.effect==='ambient'&&rigReady)body+='<small>Демонстрационная световая линия; схема установки подбирается отдельно.</small>';
    const note=serviceNote(nav.service);if(note)body+=`<p class="nav-note">${escape(note)}</p>`;
@@ -136,6 +150,7 @@ export function mountServiceNavigator(hero){
   if(a==='home')selectDirection(null);else if(a==='back')back();else if(a==='zone')selectZone(v);
   else if(a==='service'){const z=resolveZone(nav.direction,nav.zone,nav.inside);if(z?.services.includes(v)){nav.service=v;renderUI();}}
   else if(a==='chrome'||a==='tint'){a==='chrome'?setChrome(v==='on'):setTint(v==='on');b.parentElement.querySelectorAll('button').forEach(el=>el.classList.toggle('selected',el===b));}
+  else if(a==='wrap'&&nav.zone==='ppf'){setWrap(v);panel.querySelectorAll('[data-nav-action="wrap"]').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));announcement.textContent=`Цвет кузова: ${b.getAttribute('aria-label')}`;}
   else if(a==='closer'&&rigReady){animateDoor(.09,350,0,()=>animateDoor(0,850));}
  }
  panel.addEventListener('click',onPanelClick);breadcrumb.addEventListener('click',onPanelClick);
@@ -185,6 +200,7 @@ export function mountServiceNavigator(hero){
   if(exterior&&/^Headlight_glass$/i.test(name)){m.color.set(0xdddddd);m.transparent=true;m.opacity=.12;m.depthWrite=false;m.metalness=0;m.roughness=.055;if('transmission'in m)m.transmission=0;}
   if(/^(Front_DRL|Headlight)$/i.test(name)){m.color.set(0xeaeaea);m.emissive.set(0xffffff);m.emissiveIntensity=.7;m.metalness=.12;m.roughness=.18;}
   if(/^(Tail_lights|Brakelight)$/i.test(name)){m.color.set(0x4c0303);m.emissive.set(0x850404);m.emissiveIntensity=.45;}
+  if(body){bodyMaterials.push(m);paintBody(m,WRAP_COLORS.find(c=>c.id===wrapColor));}
   m.flatShading=false;m.envMapIntensity=body?.7:trim?.5:1.0;m.needsUpdate=true;materialCache.set(cacheKey,m);return m;
  }
  function addAmbient(){ambientGroup=new THREE.Group();model.add(ambientGroup);
@@ -229,6 +245,6 @@ export function mountServiceNavigator(hero){
  catch(error){console.warn('TI WebGL unavailable',error);loading.textContent='Выберите направление — все услуги доступны без 3D.';hero.dataset.navReady='no-webgl';}
  renderUI();
  // Diagnostics expose only scene state, never customer data or credentials.
- window.__TI_NAV={selectDirection,selectZone,back,openCabin,close:()=>selectDirection(null),getState:()=>({...nav,rigReady,modelReady,doorProgress,moving:!!flight||!!doorMotion,camera:camera.position.toArray(),look:look.toArray(),markerCount:markers.length,stats:{...stats}})};
+ window.__TI_NAV={selectDirection,selectZone,back,openCabin,close:()=>selectDirection(null),getState:()=>({...nav,rigReady,modelReady,doorProgress,wrapColor,bodyMaterials:bodyMaterials.map(m=>({name:m.name,color:m.color.getHexString(),roughness:m.roughness,clearcoat:m.clearcoat})),chromeColors:chromeMaterials.map(m=>m.color.getHexString()),moving:!!flight||!!doorMotion,camera:camera.position.toArray(),look:look.toArray(),markerCount:markers.length,stats:{...stats}})};
  return window.__TI_NAV;
 }

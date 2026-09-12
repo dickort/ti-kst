@@ -29,6 +29,29 @@ const {chromium}=req('playwright');
     for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];assert(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top,`Measured labels overlap at ${width}px: ${JSON.stringify([a,b])}`);}
    }
    await page.locator('.nav-motion').click();
+   await page.locator('.direction-tab[data-direction="preserve"]').click();await settle();
+   await page.locator('[data-nav-action="zone"][data-value="ppf"]').click();await settle();
+   const wraps=page.locator('[data-nav-action="wrap"]');assert.equal(await wraps.count(),7);
+   assert.equal(await wraps.filter({has:page.locator('i.matte')}).count(),2);
+   const beforeWrap=await page.evaluate(()=>__TI_NAV.getState()),requestCount=requests.length;
+   assert(beforeWrap.bodyMaterials.length>0,'No paintable body materials');
+   for(const [id,hex,matte] of [['black','050505',false],['white','e8e6df',false],['red','a70b19',false],['blue','164fb0',false],['green','126044',false],['graphite','30343a',true],['grey','858b91',true]]){
+    const swatch=page.locator(`[data-nav-action="wrap"][data-value="${id}"]`);await swatch.click();
+    assert.equal(await swatch.getAttribute('aria-pressed'),'true');
+    assert.equal(await page.locator('[data-nav-action="wrap"][aria-pressed="true"]').count(),1);
+    const state=await page.evaluate(()=>__TI_NAV.getState());assert.equal(state.wrapColor,id);
+    state.bodyMaterials.forEach(m=>{assert.equal(m.color,hex);assert.equal(m.roughness,matte?.78:.26);assert.equal(m.clearcoat,matte?.04:.55);});
+    assert.deepEqual(state.chromeColors,beforeWrap.chromeColors);assert.equal(state.doorProgress,0);
+    const bounds=await swatch.boundingBox();assert(bounds.width>=44&&bounds.height>=44&&bounds.x>=0&&bounds.x+bounds.width<=width);
+   }
+   assert.equal(requests.length,requestCount,'Changing wrap must not fetch assets');
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Wrap causes page overflow');
+   await page.locator('[data-nav-action="wrap"][data-value="red"]').focus();await page.keyboard.press('Enter');
+   assert.equal((await page.evaluate(()=>__TI_NAV.getState())).wrapColor,'red');
+   await page.screenshot({path:path.join(dir,`wrap-${width}.png`)});
+   await page.locator('[data-nav-action="back"]').click();await settle();
+   assert.equal(await wraps.count(),0);
+   const resetWrap=await page.evaluate(()=>__TI_NAV.getState());assert.equal(resetWrap.wrapColor,'black');assert.deepEqual(resetWrap.bodyMaterials,first.bodyMaterials);
    await page.locator('.direction-tab[data-direction="tune"]').click();await settle();
    // A delayed download must not reopen the door after navigating away.
    await page.route('**/*_interior.*',async route=>{await new Promise(r=>setTimeout(r,900));await route.continue();});
