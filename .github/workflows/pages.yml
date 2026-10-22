@@ -32,6 +32,8 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/ti-nav-deps/node_modules" "$RUNNER_TEMP/ti-nav-deps/node_modules/.bin/esbuild" _site/hero-service-navigator.js --bundle --format=esm --target=es2022 --minify --outfile=_site/hero-service-navigator.bundle.js
           node --check --input-type=module < _site/app.js
           node scripts/test-service-navigator.mjs
+      - name: Build isolated studio demo
+        run: NODE_PATH="$RUNNER_TEMP/ti-nav-deps/node_modules" python3 scripts/build-studio-demo.py "$RUNNER_TEMP/ti-nav-deps/node_modules/.bin/esbuild"
       - name: Test desktop and mobile navigation
         run: |
           python3 -m http.server 4173 --directory _site >/tmp/ti-nav-http.log 2>&1 &
@@ -42,6 +44,7 @@ jobs:
           node scripts/qa-service-navigator.cjs "$RUNNER_TEMP/ti-nav-deps"
           node scripts/qa-fast-hero.cjs "$RUNNER_TEMP/ti-nav-deps"
           node scripts/qa-hero-regression.cjs "$RUNNER_TEMP/ti-nav-deps"
+          node scripts/qa-studio-demo.cjs "$RUNNER_TEMP/ti-nav-deps"
       - name: Save interaction checks and previews
         if: always()
         uses: actions/upload-artifact@v4
@@ -66,7 +69,32 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+  verify-demo:
+    if: github.ref == 'refs/heads/main'
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v1.51.1-noble
+      options: --shm-size=1gb
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install public smoke-test dependency
+        run: npm install --prefix "$RUNNER_TEMP/studio-qa" --no-audit --no-fund --ignore-scripts playwright@1.51.1
+      - name: Verify deployed demo and existing homepage
+        env:
+          PAGES_URL: ${{ needs.deploy.outputs.page_url }}
+        run: node scripts/qa-studio-demo.cjs "$RUNNER_TEMP/studio-qa"
+      - name: Save public verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-public-verification
+          path: qa-service-navigator/studio-*
+          retention-days: 7

@@ -2,7 +2,7 @@
   "name": "ti-kst",
   "private": true,
   "scripts": {
-    "build": "python3 scripts/build-service-navigator.py && python3 scripts/fast-hero.py && esbuild _site/hero-service-navigator.js --bundle --format=esm --target=es2022 --minify --outfile=_site/hero-service-navigator.bundle.js",
+    "build": "python3 scripts/build-service-navigator.py && python3 scripts/fast-hero.py && esbuild _site/hero-service-navigator.js --bundle --format=esm --target=es2022 --minify --outfile=_site/hero-service-navigator.bundle.js && python3 scripts/build-studio-demo.py",
     "dev": "vite _site --config vite.config.mjs",
     "test": "node scripts/test-service-navigator.mjs"
   },
