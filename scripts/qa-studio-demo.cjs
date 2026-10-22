@@ -11,7 +11,7 @@ const {chromium}=req('playwright');
  let available=false;
  for(let attempt=0;attempt<8;attempt++){
   const r=await api.request.get(url);
-  if(r.ok()&&(await r.text()).includes('studio-v2')){available=true;break;}
+  if(r.ok()&&(await r.text()).includes('studio-orbit-v3')){available=true;break;}
   await new Promise(resolve=>setTimeout(resolve,10000));
  }
  assert(available,'Deployed studio HTML must be available');
@@ -22,12 +22,30 @@ const {chromium}=req('playwright');
  }
  await api.close();
  for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
-  const page=await browser.newPage({viewport,reducedMotion:'reduce',deviceScaleFactor:1}),errors=[],requests=[];
+  const page=await browser.newPage({viewport,reducedMotion:'reduce',deviceScaleFactor:1,hasTouch:viewport.width<801}),errors=[],requests=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(/\.glb/.test(r.url()))requests.push({url:r.url(),status:r.status()});});
   // Reduce only the raster workload on CI's software GPU, retaining all geometry.
   await page.addInitScript(()=>Object.defineProperty(window,'devicePixelRatio',{get:()=>.5}));
   await page.goto(url);await page.waitForFunction(()=>window.__STUDIO?.state.ready,null,{timeout:120000});
   const ready=await page.evaluate(()=>({stats:__STUDIO.stats,state:__STUDIO.state,camera:__STUDIO.camera}));
+  const protectedSurfaces=await page.evaluate(()=>[__STUDIO.surfaceAt(0,0),__STUDIO.surfaceAt(.65,-.5),__STUDIO.surfaceAt(.85,-2.3)]);
+  const swatches=await page.locator('[data-color]').evaluateAll(ns=>ns.map(n=>n.dataset.color));
+  for(const color of swatches){
+   await page.evaluate(c=>document.querySelector('[data-color="'+c+'"]').click(),color);
+   const actual=await page.evaluate(()=>({paint:[__STUDIO.surfaceAt(0,-.5),__STUDIO.surfaceAt(.3,-.5),__STUDIO.surfaceAt(.3,-2.3)],protected:[__STUDIO.surfaceAt(0,0),__STUDIO.surfaceAt(.65,-.5),__STUDIO.surfaceAt(.85,-2.3)]}));
+   assert(actual.paint.every(x=>x.painted&&x.color===color.slice(1)),'Actual roof and spoiler material colors');
+   assert.deepEqual(actual.protected,protectedSurfaces,'Glass, chrome and lower carbon unchanged');
+  }
+  for(const view of [0,1,2,3,4]){
+   await page.evaluate(v=>document.querySelector('[data-view="'+v+'"]').click(),view);await page.waitForFunction(()=>!__STUDIO.moving);
+   assert((await page.evaluate(()=>__STUDIO.projectedBounds())).every(v=>Math.abs(v[0])<.98&&Math.abs(v[1])<.98),'Whole-car preset clipping');
+  }
+  const orbitBefore=await page.evaluate(()=>__STUDIO.camera),rect=await page.locator('canvas').boundingBox();
+  if(viewport.width>800){await page.mouse.move(rect.x+rect.width*.4,rect.y+rect.height*.5);await page.mouse.down();await page.mouse.move(rect.x+rect.width*.6,rect.y+rect.height*.55,{steps:5});await page.mouse.up();}
+  else{const cd=await page.context().newCDPSession(page),x=rect.x+rect.width*.4,y=rect.y+rect.height*.5;await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+60,y:y+10}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
+  const orbitAfter=await page.evaluate(()=>__STUDIO.camera);assert.notDeepEqual(orbitBefore,orbitAfter,'Pointer/touch orbit works');
+  await page.evaluate(()=>scrollTo(0,70));assert.deepEqual(await page.evaluate(()=>__STUDIO.camera),orbitAfter,'Page scroll does not move camera');await page.evaluate(()=>scrollTo(0,0));
+
   assert(ready.stats.bytes>8000000);assert.equal(requests.length,1);assert.equal(requests[0].status,200);
   const act=async selector=>{if(viewport.width<801)await page.evaluate(s=>{const r=document.querySelector(s).getBoundingClientRect();scrollTo(0,scrollY+r.top-document.querySelector('.visual').clientHeight-20)},selector);await page.locator(selector).click();};
   await act('[data-finish="matte"]');assert.equal(await page.evaluate(()=>__STUDIO.state.finish),'matte');
@@ -40,6 +58,6 @@ const {chromium}=req('playwright');
   assert.equal(errors.length,0);await page.screenshot({path:path.join(out,'studio-'+viewport.width+'.png')});
   report.checks.push({viewport,requests,errors,stats:await page.evaluate(()=>__STUDIO.stats),pass:true});await page.close();
  }
- fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, desktop/mobile materials, film and camera:',url);
+ fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, all body colors including roof/spoiler, protected materials, desktop/mobile orbit, presets and film:',url);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
