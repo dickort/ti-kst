@@ -72,7 +72,7 @@ const {chromium}=req('playwright');
   const fallback=await browser.newPage({viewport:{width:390,height:844}});
   await fallback.addInitScript(()=>{globalThis.DecompressionStream=undefined;Object.defineProperty(window,'devicePixelRatio',{get:()=>.125});});
   await fallback.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
-  await fallback.waitForFunction(()=>window.__TI_NAV?.getState().stats.firstModelMs!==null&&__TI_NAV?.getState().modelReady,null,{timeout:120000,polling:100});
+  await fallback.waitForFunction(()=>{const state=window.__TI_NAV?.getState();return !!state?.modelReady&&state.stats.firstModelMs!=null;},null,{timeout:120000,polling:100});
   const raw=await fallback.evaluate(()=>__TI_NAV.getState());assert(raw.stats.exterior.url.endsWith('.glb'));report.push({rawFallback:true,state:raw});await fallback.close();
   fs.writeFileSync(path.join(dir,'lossless-streaming-results.json'),JSON.stringify(report,null,2));console.log('PASS lossless streaming, deferred cabin, cancellation, reuse, intrinsic label layout, raw fallback.');
  }finally{await browser.close();xvfb?.kill();}
