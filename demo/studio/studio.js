@@ -1,3 +1,4 @@
+import {createServiceEffects,demonstrations} from './service-effects.js';
 import {setupColorWheel} from './color-wheel.js';
 import {addStudioPosters} from './poster-art.js';
 import {grainTexture,ensureSurfaceUV,detailCabin} from './surface-detail.js';
@@ -13,10 +14,10 @@ const state={ready:false,color:'#62747e',finish:'gloss',film:'none',zone:'hood',
 const stats={tier:innerWidth<801||navigator.connection?.saveData?'mobile':'desktop',frames:0,adaptive:false};
 const uniforms={film:{value:0},zone:{value:0},polish:{value:0},polishing:{value:0},polishZone:{value:2}};
 const workingLights=[];let lampMaterial,environmentTarget,cubeTarget;
-let renderer,scene,camera,model,controls,flight=null,interacting=false,drawing=false,raf=0,visible=true,lastFrame=0,slow=0;
+let serviceEffects,serviceMotion=null;let renderer,scene,camera,model,controls,flight=null,interacting=false,drawing=false,raf=0,visible=true,lastFrame=0,slow=0;
 const paints=[],leathers=[],plastics=[],chromes=[],windows=[];const textures={leather:grainTexture('leather'),perforated:grainTexture('perforated'),fabric:grainTexture('fabric'),carbon:grainTexture('carbon')};const ambience={active:{value:0},color:{value:new THREE.Color('#65b9ff')},power:{value:.7},inverse:{value:new THREE.Matrix4()}};let door,doorRest,doorMotion=null,doorProgress=0,ambient;
 const viewport=$('#viewport'),canvas=$('canvas'),status=$('#status');
-window.__STUDIO={state,stats,get loop(){return {raf,visible,drawing}},get moving(){return !!flight||!!doorMotion},get doorProgress(){return doorProgress},get serviceCount(){return Object.keys(services).length},get ambient(){return {active:ambience.active.value,power:ambience.power.value,color:ambience.color.value.getHexString(),lightCount:ambient?.children.length}},get cabinMaterials(){return leathers.map(m=>({name:m.name,color:m.color.getHexString(),roughness:m.roughness}))},get camera(){return camera?.position.toArray()},get materials(){return paints.map(m=>({name:m.name,color:m.color.getHexString(),map:!!m.map,roughness:m.roughness,metalness:m.metalness}))}};
+window.__STUDIO={state,stats,get loop(){return {raf,visible,drawing}},get demonstration(){return serviceEffects?.status},get moving(){return !!flight||!!doorMotion||!!serviceMotion},get doorProgress(){return doorProgress},get serviceCount(){return Object.keys(services).length},get ambient(){return {active:ambience.active.value,power:ambience.power.value,color:ambience.color.value.getHexString(),lightCount:ambient?.children.length}},get cabinMaterials(){return leathers.map(m=>({name:m.name,color:m.color.getHexString(),roughness:m.roughness}))},get camera(){return camera?.position.toArray()},get materials(){return paints.map(m=>({name:m.name,color:m.color.getHexString(),map:!!m.map,roughness:m.roughness,metalness:m.metalness}))}};
 all('[data-view]').forEach(b=>b.disabled=true);
 function fallback(message){$('#color-wheel').setAttribute('aria-disabled','true');$('#color-wheel').tabIndex=-1;state.ready=false;cancelAnimationFrame(raf);raf=0;document.body.classList.add('fallback');$('#poster').hidden=false;canvas.hidden=true;$('#controls').disabled=true;all('[data-view]').forEach(b=>b.disabled=true);$('#motion').disabled=true;status.textContent=message;$('#scroll-hint').textContent='';stats.error=message;metrics();}
 function metrics(){$('#metrics').textContent=JSON.stringify(stats,null,2);}
@@ -78,9 +79,10 @@ function render(now){
   if(t===1)flight=null;
  }
  if(doorMotion){const d=doorMotion;d.elapsed+=Math.min(80,Math.max(0,now-d.last));d.last=now;const t=Math.min(1,d.elapsed/d.duration),e=t*t*(3-2*t);doorProgress=THREE.MathUtils.lerp(doorMotion.from,doorMotion.to,e);door.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*doorProgress));if(t===1){doorMotion=null;renderer.shadowMap.needsUpdate=true;}}
+ if(serviceMotion){const d=serviceMotion;d.elapsed+=Math.min(80,Math.max(0,now-d.last));d.last=now;const t=Math.min(1,d.elapsed/2200);setComparison(t*t*(3-2*t));if(t===1){serviceMotion=null;$('#demo-play').textContent='Повторить';}}
  const begin=performance.now();renderer.render(scene,camera);stats.lastRenderSubmitMs=+(performance.now()-begin).toFixed(2);stats.frames++;
- if((flight||doorMotion||interacting)&&lastFrame&&now-lastFrame>40&&now-lastFrame<300){slow++;if(slow>8&&!stats.adaptive){renderer.setPixelRatio(Math.max(Math.min(.75,renderer.getPixelRatio()),renderer.getPixelRatio()*.7));stats.adaptive=true;stats.pixelRatio=renderer.getPixelRatio();}}
- drawing=false;lastFrame=flight||doorMotion||interacting?now:0;if(flight||doorMotion)invalidate();else metrics();
+ if((flight||doorMotion||serviceMotion||interacting)&&lastFrame&&now-lastFrame>40&&now-lastFrame<300){slow++;if(slow>8&&!stats.adaptive){renderer.setPixelRatio(Math.max(Math.min(.75,renderer.getPixelRatio()),renderer.getPixelRatio()*.7));stats.adaptive=true;stats.pixelRatio=renderer.getPixelRatio();}}
+ drawing=false;lastFrame=flight||doorMotion||serviceMotion||interacting?now:0;if(flight||doorMotion||serviceMotion)invalidate();else metrics();
 }
 function resize(){
  if(!renderer)return;renderer.setSize(viewport.clientWidth,viewport.clientHeight,false);camera.aspect=viewport.clientWidth/viewport.clientHeight;camera.updateProjectionMatrix();
@@ -91,6 +93,9 @@ function chooseView(value){
  if(!controls)return;document.body.dataset.sceneView=value;state.view=value;
  if(value>=5&&value!==6)setDoor(true);
  const p=preset(value);all('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.view===value)));
+ flyTo(p);
+}
+function flyTo(p){
  if(state.motion&&state.ready){
   const a=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)),b=new THREE.Spherical().setFromVector3(p.eye.clone().sub(p.at));
   b.theta=a.theta+Math.atan2(Math.sin(b.theta-a.theta),Math.cos(b.theta-a.theta));
@@ -285,7 +290,9 @@ async function boot(){
  });
  const cabinLight=new THREE.PointLight(0xe6efff,.65,3,2);cabinLight.position.set(0,1.6,0);scene.add(cabinLight);
  window.__STUDIO.surfaceAt=(x,z)=>{const hits=new THREE.Raycaster(new THREE.Vector3(x,5,z),new THREE.Vector3(0,-1,0)).intersectObject(model,true);const h=hits[0];if(!h)return null;const m=Array.isArray(h.object.material)?h.object.material[h.face.materialIndex]:h.object.material;return {mesh:h.object.name,material:m.name,color:m.color.getHexString(),painted:paints.includes(m),point:h.point.toArray()};};
+ window.__STUDIO.samplePixels=()=>{renderer.render(scene,camera);const gl=renderer.getContext(),pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);const sampled=[];for(let i=0;i<pixels.length;i+=128)sampled.push(pixels[i],pixels[i+1],pixels[i+2]);return sampled;};
  window.__STUDIO.projectedBounds=()=>{camera.updateMatrixWorld();const b=new THREE.Box3().setFromObject(model);return [b.min.x,b.max.x].flatMap(x=>[b.min.y,b.max.y].flatMap(y=>[b.min.z,b.max.z].map(z=>new THREE.Vector3(x,y,z).project(camera).toArray())));};
+ serviceEffects=createServiceEffects({scene,model,paints,invalidate,inspectionLight:workingLights[0],setDoorFraction:value=>{doorMotion=null;doorProgress=value;state.doorOpen=value>0;$('#door-toggle').setAttribute('aria-pressed',String(state.doorOpen));$('#door-toggle').textContent=state.doorOpen?'Закрыть водительскую дверь':'Открыть водительскую дверь';door?.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*value));renderer.shadowMap.needsUpdate=true;},setAmbientFraction:value=>{ambience.active.value=value;ambient.visible=value>0;}});
  update();positionCamera();addStudioPosters(renderer,scene,model);stats.posters=3;updateEnvironment();
  status.textContent='Подготовка первого кадра…';const compile=performance.now();await renderer.compileAsync(scene,camera);stats.shaderCompileMs=+(performance.now()-compile).toFixed(1);
  const first=performance.now();renderer.render(scene,camera);stats.firstRenderSubmitMs=+(performance.now()-first).toFixed(1);stats.triangles=renderer.info.render.triangles;
@@ -300,7 +307,7 @@ $('#polish-zone').onchange=e=>{state.polishZone=e.target.value;uniforms.polishin
 $('#polish').oninput=e=>{state.polish=+e.target.value;uniforms.polishing.value=1;update();};
 
 all('[data-view]').forEach(b=>b.onclick=()=>chooseView(+b.dataset.view));
-$('#reset').onclick=()=>{state.service=null;chromes.forEach(m=>m.color.copy(m.userData.original));windows.forEach(m=>m.color.set('#152025'));setDoor(false);setCabin(null);uniforms.polishing.value=0;$('#polish-zone').value=state.polishZone='all';all('[data-color]')[0].click();all('[data-finish]')[0].click();all('[data-film]')[0].click();$('#zone').value=state.zone='hood';$('#polish').value=state.polish=0;chooseView(0);update();};
+$('#reset').onclick=()=>{exitDemo();state.service=null;serviceOptions(true);$('#service-title').textContent='28 услуг ТИ';$('#service-lead').textContent='Выберите услугу для сравнения до / после.';$('#service-mode').textContent='';chromes.forEach(m=>m.color.copy(m.userData.original));windows.forEach(m=>m.color.set('#152025'));setDoor(false);setCabin(null);uniforms.polishing.value=0;$('#polish-zone').value=state.polishZone='all';all('[data-color]')[0].click();all('[data-finish]')[0].click();all('[data-film]')[0].click();$('#zone').value=state.zone='hood';$('#polish').value=state.polish=0;chooseView(0);update();};
 
 function setDoor(open){
  if(!door)return;if(state.doorOpen===open&&(doorMotion||doorProgress===(open?1:0)))return;if(!state.motion)renderer.shadowMap.needsUpdate=true;state.doorOpen=open;$('#door-toggle').setAttribute('aria-pressed',String(open));$('#door-toggle').textContent=open?'Закрыть водительскую дверь':'Открыть водительскую дверь';
@@ -309,62 +316,71 @@ function setDoor(open){
 function setCabin(service){
  state.cabin=service;const text={clean:'Химчистка: сиденья, ковролин и обивка. Выделена зона работ; результат чистки зависит от состояния материала.',leather:'Уход за кожей: очистка и защитный состав. Показан более мягкий матовый финиш сидений.',trim:'Перетяжка: примерка цвета кожаных поверхностей. Выберите оттенок ниже.',ambient:'Встроенные световые полосы панели и дверных карт, отражённый свет и подсветка ног. Выберите цвет и яркость.',plastic:'Восстановление пластика: показана зона отделки панели и дверей. Технология зависит от повреждения.',steering:'Перешив руля: показана зона работ. Материал и рисунок строчки подбираются индивидуально.',sound:'Шумоизоляция: двери, пол и арки. Скрытые слои под обивкой здесь не моделируются.'};
  $('#cabin-description').textContent=text[service]||'Откройте дверь и рассмотрите доступные услуги салона.';
- leathers.forEach(m=>{m.color.copy(m.userData.baseColor);m.roughness=m.userData.baseRoughness;m.emissive.set(0);if(service==='trim')m.color.set(state.leather);if(service==='leather')m.roughness=.65;if(service==='clean'){m.emissive.set('#1b3441');m.emissiveIntensity=.35;}});
- ambience.active.value=service==='ambient'?1:0;if(ambient)ambient.visible=service==='ambient';plastics.forEach(m=>{m.emissive.set(service==='plastic'?'#17202a':'#000000');});all('[data-cabin]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cabin===service)));if(service)chooseView(service==='steering'?7:['leather','trim','clean'].includes(service)?8:5);invalidate();
+ leathers.forEach(m=>{m.color.copy(m.userData.baseColor);m.roughness=m.userData.baseRoughness;m.emissive.set(0);if(service==='trim')m.color.set(state.leather);if(service==='leather')m.roughness=.65;});
+ ambience.active.value=service==='ambient'?1:0;if(ambient)ambient.visible=service==='ambient';plastics.forEach(m=>{m.emissive.set('#000000');});all('[data-cabin]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cabin===service)));if(service)chooseView(service==='steering'?7:['leather','trim','clean'].includes(service)?8:5);invalidate();
 }
 $('#door-toggle').onclick=()=>{setDoor(!state.doorOpen);if(state.doorOpen)chooseView(1);else if(state.view===5)chooseView(0);};
-all('[data-cabin]').forEach(b=>b.onclick=()=>setCabin(b.dataset.cabin));
-$('#leather-color').onchange=e=>{state.leather=e.target.value;setCabin('trim');};
-$('#ambient-color').onchange=e=>{state.ambientColor=e.target.value;ambience.color.value.set(state.ambientColor);ambient?.children.forEach(l=>l.color.set(state.ambientColor));setCabin('ambient');};
-$('#ambient-power').oninput=e=>{state.ambientPower=+e.target.value;ambience.power.value=state.ambientPower/100;ambient?.children.forEach(l=>l.intensity=.35*state.ambientPower/100);setCabin('ambient');};
-$('#exterior').onclick=()=>{setCabin(null);setDoor(false);chooseView(0);};
+all('[data-cabin]').forEach(b=>b.onclick=()=>{const slug={clean:'interior-clean',leather:'leather',trim:'interior-trim',plastic:'plastic',steering:'steering',sound:'soundproof',ambient:'ambient'}[b.dataset.cabin];showService(slug);setComparison(1);});
+$('#leather-color').onchange=e=>{state.leather=e.target.value;exitDemo();state.service=null;setCabin('trim');};
+$('#ambient-color').onchange=e=>{if(state.service!=='ambient'){showService('ambient');setComparison(1);}state.ambientColor=e.target.value;ambience.color.value.set(state.ambientColor);ambient?.children.forEach(l=>l.color.set(state.ambientColor));setCabin('ambient');};
+$('#ambient-power').oninput=e=>{if(state.service!=='ambient'){showService('ambient');setComparison(1);}state.ambientPower=+e.target.value;ambience.power.value=state.ambientPower/100;ambient?.children.forEach(l=>l.intensity=.35*state.ambientPower/100);setCabin('ambient');};
+$('#exterior').onclick=()=>{exitDemo();state.service=null;setCabin(null);setDoor(false);chooseView(0);};
 
 
 const cabinServices={'interior-clean':'clean',leather:'leather',plastic:'plastic',steering:'steering','interior-trim':'trim',soundproof:'sound',ambient:'ambient'};
-function showService(slug){
- const item=services[slug];state.service=slug;state.film='none';uniforms.polishing.value=0;$('#service-title').textContent=item.title;$('#service-lead').textContent=item.lead;$('#service-link').href='../../service.html?service='+encodeURIComponent(slug);
- chromes.forEach(m=>m.color.copy(m.userData.original));windows.forEach(m=>m.color.set('#152025'));
- let mode='Показана зона услуги. Комплектация и результат определяются после осмотра автомобиля.';
- if(cabinServices[slug]){setCabin(cabinServices[slug]);mode=$('#cabin-description').textContent;}
- else{setCabin(null);setDoor(false);chooseView(({tint:1,'forged-wheels':1,anticorrosion:1,closers:1,steering:5})[slug]??0);
-  if(slug==='anti-chrome'){chromes.forEach(m=>m.color.set('#161a20'));mode='Примерка тёмной отделки хромированных элементов.';}
-  if(slug==='tint'){windows.forEach(m=>m.color.set('#030608'));mode='Визуальная примерка более тёмного стекла; не образец светопропускания.';}
-  if(['body-polish','protective-polish'].includes(slug)){state.polishZone='all';$('#polish-zone').value='all';uniforms.polishing.value=1;mode='Сравните состояние покрытия ползунком полировки.';}
-  if(slug==='ppf'){all('[data-film="clear"]')[0].click();mode='Примерка прозрачной защитной плёнки. Зону нанесения можно менять выше.';}
-  if(slug==='protective-coating'){state.finish='gloss';mode='Пример глянцевого финиша. Состав и срок службы покрытия подбираются отдельно.';}
-  if(slug==='closers'){setDoor(true);mode='Откройте и закройте водительскую дверь. Это демонстрация движения, не модель конкретного доводчика.';}
-  if(['alarm','steps','dashcam','towbar','suspension','forged-wheels'].includes(slug))mode='Услуга есть в каталоге ТИ. Конкретное оборудование не установлено на этой 3D-модели; подбор выполняется отдельно.';
- }
- $('#service-mode').textContent=mode;update();
+function setComparison(value){
+ if(!serviceEffects||!state.service)return;serviceEffects.apply(value);$('#demo-range').value=Math.round(value*100);$('#demo-percent').textContent=Math.round(value*100)+'%';
+ $('#demo-before').setAttribute('aria-pressed',String(value===0));$('#demo-after').setAttribute('aria-pressed',String(value===1));
+ $('#demo-caption').textContent=value===0?demonstrations[state.service].before:value===1?demonstrations[state.service].after:'Сравнение · '+Math.round(value*100)+'%';
 }
-function serviceOptions(){const direction=$('#service-direction').value;$('#service-choice').replaceChildren(...Object.entries(services).filter(([,s])=>s.direction===direction).map(([id,s])=>new Option(s.title,id)));}
-$('#service-direction').onchange=()=>{serviceOptions();showService($('#service-choice').value);};$('#service-choice').onchange=e=>showService(e.target.value);serviceOptions();
-$('#service-title').textContent='28 услуг ТИ';$('#service-lead').textContent='Выберите направление и услугу из каталога существующего сайта.';$('#service-mode').textContent='Визуальные примеры доступны для покрытий, отделки и подсветки. Для скрытых работ показана зона.';
+function exitDemo(){serviceMotion=null;serviceEffects?.clear();document.body.classList.remove('service-active');$('#demo-overlay').hidden=true;}
+function focusService(slug){
+ const d=demonstrations[slug],at=new THREE.Vector3(...d.focus),eye=new THREE.Vector3(...d.eye);
+ if(innerWidth<801)eye.sub(at).multiplyScalar(cabinServices[slug] ? .9 : .70).add(at);
+ state.view='service';all('[data-view]').forEach(b=>b.setAttribute('aria-pressed','false'));flyTo({eye,at});
+}
+function showService(slug){
+ if(!state.ready)return;const item=services[slug];serviceMotion=null;serviceEffects.clear();state.service=slug;state.film='none';uniforms.polishing.value=0;
+ $('#service-direction').value=item.direction;serviceOptions();$('#service-choice').value=slug;
+ $('#service-title').textContent=item.title;$('#service-lead').textContent=item.lead;$('#service-link').href='../../service.html?service='+encodeURIComponent(slug);
+ chromes.forEach(m=>m.color.copy(m.userData.original));windows.forEach(m=>m.color.set('#152025'));
+ setCabin(cabinServices[slug]||null);if(slug==='interior-trim')leathers.forEach(m=>m.color.copy(m.userData.baseColor));setDoor(!!cabinServices[slug]);
+ const d=serviceEffects.select(slug);$('#service-mode').textContent=d.note;
+ $('#demo-title').textContent=item.title;$('#demo-overlay').hidden=false;document.body.classList.add('service-active');$('#demo-play').textContent='Показать результат';setComparison(0);focusService(slug);update();
+}
+$('#demo-range').oninput=e=>{serviceMotion=null;setComparison(+e.target.value/100);$('#demo-play').textContent='Показать результат';};
+for(const [id,value] of [['demo-before',0],['demo-after',1]])$('#'+id).onclick=()=>{serviceMotion=null;setComparison(value);};
+$('#demo-play').onclick=()=>{if(!state.service)return;if(serviceMotion){serviceMotion=null;$('#demo-play').textContent='Продолжить';return;}if(!state.motion){setComparison(1);return;}setComparison(0);serviceMotion={elapsed:0,last:performance.now()};$('#demo-play').textContent='Пауза';invalidate();};
+$('#demo-focus').onclick=()=>{if(state.service)focusService(state.service);};
+$('#demo-close').onclick=()=>{exitDemo();state.service=null;setCabin(null);setDoor(false);chooseView(0);};
+function serviceOptions(empty=false){const direction=$('#service-direction').value;$('#service-choice').replaceChildren(...Object.entries(services).filter(([,s])=>s.direction===direction).map(([id,s])=>new Option(s.title,id)));if(empty){const option=new Option('Выберите услугу…','',true,true);option.disabled=true;$('#service-choice').prepend(option);$('#service-choice').value='';}}
+$('#service-direction').onchange=()=>{serviceOptions();showService($('#service-choice').value);};$('#service-choice').onchange=e=>showService(e.target.value);serviceOptions(true);
+$('#service-title').textContent='28 услуг ТИ';$('#service-lead').textContent='Выберите направление и услугу из каталога существующего сайта.';$('#service-mode').textContent='Для каждой услуги: крупный план и сравнение до / после. Скрытые узлы показаны схемами.';
 
 
 function updateEnvironment(){
- const restore=model?.visible;if(model)model.visible=false;
+ const restore=model?.visible,demoVisible=serviceEffects?.group.visible;if(model)model.visible=false;if(serviceEffects)serviceEffects.group.visible=false;
  cubeTarget??=new THREE.WebGLCubeRenderTarget(stats.tier==='mobile'?128:256,{type:THREE.HalfFloatType});
  const capture=new THREE.CubeCamera(.1,60,cubeTarget);capture.position.set(0,.85,0);capture.update(renderer,scene);
  const pmrem=new THREE.PMREMGenerator(renderer),next=pmrem.fromCubemap(cubeTarget.texture);pmrem.dispose();environmentTarget?.dispose();environmentTarget=next;scene.environment=next.texture;
- if(model)model.visible=restore;stats.reflectionCaptures=(stats.reflectionCaptures||0)+1;stats.reflectionOrigin=[0,.85,0];
+ if(model)model.visible=restore;if(serviceEffects)serviceEffects.group.visible=demoVisible;stats.reflectionCaptures=(stats.reflectionCaptures||0)+1;stats.reflectionOrigin=[0,.85,0];
 }
 function setStudioLight(mode){
  if(!state.ready)return;state.lighting=mode;const factor=mode==='inspection'?1:.18;
  lampMaterial.color.setRGB(5.8*factor,6*factor,6.3*factor);
- workingLights.forEach((l,i)=>l.intensity=(i<6?4:3)*factor);
+ workingLights.forEach((l,i)=>l.intensity=(i<6?4:3)*factor);serviceEffects?.setLightMode(mode);
  all('[data-light]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.light===mode)));
  updateEnvironment();renderer.shadowMap.needsUpdate=true;invalidate();
 }
 all('[data-light]').forEach(b=>b.onclick=()=>setStudioLight(b.dataset.light));
 for(const [key,title] of [['preserve','Сохранить'],['restore','Восстановить'],['tune','Тюнинг']]){
  const article=document.createElement('article');article.className='service-card';const heading=document.createElement('h3');heading.textContent=title;article.append(heading);
- for(const [id,service] of Object.entries(services).filter(([,s])=>s.direction===key)){const a=document.createElement('a');a.href='../../service.html?service='+encodeURIComponent(id);a.textContent=service.title;article.append(a);}$('#service-cards').append(article);
+ for(const [id,service] of Object.entries(services).filter(([,s])=>s.direction===key)){const a=document.createElement('a');a.href='../../service.html?service='+encodeURIComponent(id);a.textContent=service.title;a.onclick=e=>{if(!state.ready)return;e.preventDefault();showService(id);$('#journey').scrollIntoView({behavior:'instant'});};article.append(a);}$('#service-cards').append(article);
 }
 
 function motionUI(){$('#motion').setAttribute('aria-pressed',String(state.motion));$('#motion').textContent='Плавные переходы: '+(state.motion?'вкл.':'выкл.');$('#scroll-hint').textContent=innerWidth>800?'Потяните, чтобы вращать · колесо — масштаб':'Вращайте пальцем · два пальца — масштаб';}
-$('#motion').onclick=()=>{state.motion=!state.motion;motionUI();if(!state.motion&&flight){camera.position.setFromSpherical(flight.b).add(flight.at);controls.target.copy(flight.at);controls.update();flight=null;}invalidate();};
-reduced.addEventListener('change',e=>{state.motion=!e.matches;motionUI();if(e.matches&&flight){const value=state.view;flight=null;chooseView(value);}invalidate();});
+$('#motion').onclick=()=>{state.motion=!state.motion;motionUI();if(!state.motion&&serviceMotion){serviceMotion=null;setComparison(1);}if(!state.motion&&flight){camera.position.setFromSpherical(flight.b).add(flight.at);controls.target.copy(flight.at);controls.update();flight=null;}invalidate();};
+reduced.addEventListener('change',e=>{state.motion=!e.matches;motionUI();if(e.matches&&serviceMotion){serviceMotion=null;setComparison(1);}if(e.matches&&flight){const value=state.view;flight=null;if(value==='service')focusService(state.service);else chooseView(value);}invalidate();});
 new ResizeObserver(()=>{resize();motionUI();}).observe(viewport);
 new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;if(visible)invalidate();}).observe(viewport);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)invalidate();});

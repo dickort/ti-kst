@@ -5,13 +5,13 @@ const {chromium}=req('playwright');
  const base=(process.env.PAGES_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
  const url=base+'demo/studio/',out=path.resolve('qa-service-navigator');fs.mkdirSync(out,{recursive:true});
  const browser=await chromium.launch({headless:true,...(process.env.STUDIO_CHROMIUM?{executablePath:process.env.STUDIO_CHROMIUM}:{}),args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
- const report={base,url,checks:[]};
+ const report={base,url,checks:[],servicePixels:[]};
  try{
  const api=await browser.newContext();
  let available=false;
  for(let attempt=0;attempt<8;attempt++){
   const r=await api.request.get(url);
-  if(r.ok()&&(await r.text()).includes('studio-page-v6')){available=true;break;}
+  if(r.ok()&&(await r.text()).includes('studio-services-v7')){available=true;break;}
   await new Promise(resolve=>setTimeout(resolve,10000));
  }
  assert(available,'Deployed studio HTML must be available');
@@ -84,9 +84,27 @@ const {chromium}=req('playwright');
   for(const dir of ['preserve','restore','tune']){
    await page.selectOption('#service-direction',dir);
    const ids=await page.locator('#service-choice option').evaluateAll(ns=>ns.map(n=>n.value));
-   for(const id of ids){await page.selectOption('#service-choice',id);assert.equal(await page.evaluate(()=>__STUDIO.state.service),id);catalogue.push(id);}
+   for(const id of ids){
+    await page.selectOption('#service-choice',id);assert.equal(await page.evaluate(()=>__STUDIO.state.service),id);catalogue.push(id);
+    await page.evaluate(()=>scrollTo(0,0));
+    const demo=await page.evaluate(()=>__STUDIO.demonstration);assert(demo.kind,'Every catalogue service has a demonstration');assert.equal(demo.progress,0);
+    if(id==='pdr'){assert(demo.displacedVertices>100);assert(demo.actualDentDisplacement>.02&&demo.actualDentDisplacement<.046,'Dent changes actual geometry without quantization overflow');}
+    const before=await page.evaluate(()=>__STUDIO.samplePixels());
+    await page.evaluate(()=>document.querySelector('#demo-after').click());
+    const after=await page.evaluate(()=>__STUDIO.samplePixels());
+    const changed=after.reduce((sum,v,i)=>sum+(Math.abs(v-before[i])>3),0);assert(changed>4,id+' must visibly change rendered pixels, not only UI labels');report.servicePixels.push({viewport,id,changed,samples:after.length});
+    if(id==='pdr')assert.equal(await page.evaluate(()=>__STUDIO.demonstration.actualDentDisplacement),0,'Dent restores original positions');
+    if(['pdr','paint','body-polish','interior-clean','soundproof'].includes(id)){
+     await page.screenshot({path:path.join(out,'studio-service-'+id+'-'+viewport.width+'-after.png')});
+     await page.evaluate(()=>document.querySelector('#demo-before').click());
+     await page.screenshot({path:path.join(out,'studio-service-'+id+'-'+viewport.width+'-before.png')});
+    }
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Service controls fit viewport');
+   }
   }
-  assert.equal(new Set(catalogue).size,28);
+  assert.equal(new Set(catalogue).size,28);console.log('PASS all service rendered comparisons',viewport.width);
+  await page.selectOption('#service-direction','restore');await page.selectOption('#service-choice','pdr');await page.locator('#demo-range').fill('50');assert.equal(await page.evaluate(()=>__STUDIO.demonstration.progress),.5);
+  await page.evaluate(()=>document.querySelector('#demo-close').click());assert.equal(await page.evaluate(()=>__STUDIO.demonstration.kind),null);
   await page.evaluate(()=>document.querySelector('[data-cabin="ambient"]').click());
   await page.selectOption('#ambient-color','#ba66ff');await page.locator('#ambient-power').fill('85');
   assert.deepEqual(await page.evaluate(()=>__STUDIO.ambient),{active:1,power:.85,color:'ba66ff',lightCount:2});
@@ -104,6 +122,6 @@ const {chromium}=req('playwright');
   }
   report.checks.push({viewport,requests,errors,stats:await page.evaluate(()=>__STUDIO.stats),pass:true});await page.close();
  }
- fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, all body colors including roof/spoiler, protected materials, desktop/mobile orbit, presets, film, polish zones, 28 TI services, embedded ambient lighting, cabin materials and driver door:',url);
+ fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, all body colors including roof/spoiler, protected materials, desktop/mobile orbit, presets, film, polish zones, 28 visibly different before/after service demonstrations, embedded ambient lighting, cabin materials and driver door:',url);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
