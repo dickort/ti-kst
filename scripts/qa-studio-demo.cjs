@@ -11,7 +11,7 @@ const {chromium}=req('playwright');
  let available=false;
  for(let attempt=0;attempt<8;attempt++){
   const r=await api.request.get(url);
-  if(r.ok()&&(await r.text()).includes('studio-orbit-v3')){available=true;break;}
+  if(r.ok()&&(await r.text()).includes('studio-atelier-v4')){available=true;break;}
   await new Promise(resolve=>setTimeout(resolve,10000));
  }
  assert(available,'Deployed studio HTML must be available');
@@ -23,7 +23,7 @@ const {chromium}=req('playwright');
  await api.close();
  for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
   const page=await browser.newPage({viewport,reducedMotion:'reduce',deviceScaleFactor:1,hasTouch:viewport.width<801}),errors=[],requests=[];
-  page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(/\.glb/.test(r.url()))requests.push({url:r.url(),status:r.status()});});
+  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/shader|WebGLProgram|VALIDATE_STATUS/.test(m.text()))errors.push(m.text());});page.on('response',r=>{if(/\.glb/.test(r.url()))requests.push({url:r.url(),status:r.status()});});
   // Reduce only the raster workload on CI's software GPU, retaining all geometry.
   await page.addInitScript(()=>Object.defineProperty(window,'devicePixelRatio',{get:()=>.5}));
   await page.goto(url);await page.waitForFunction(()=>window.__STUDIO?.state.ready,null,{timeout:120000});
@@ -55,9 +55,29 @@ const {chromium}=req('playwright');
   assert.equal(await page.evaluate(()=>__STUDIO.state.film),'color');
   assert.notDeepEqual(await page.evaluate(()=>__STUDIO.camera),ready.camera);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+
+  assert.equal(swatches.length,15,'Expanded palette');
+  await page.evaluate(()=>{document.querySelector('#custom-color').value='#ec7f31';document.querySelector('#custom-color').dispatchEvent(new Event('input'));});
+  assert.equal(await page.evaluate(()=>__STUDIO.materials[0].color),'ec7f31');
+  for(const z of ['hood','side','roof','rear','all']){
+   await page.selectOption('#polish-zone',z);await page.locator('#polish').fill('100');
+   assert.equal(await page.evaluate(()=>__STUDIO.state.polishZone),z);
+  }
+  await page.evaluate(()=>document.querySelector('#door-toggle').click());await page.waitForFunction(()=>!__STUDIO.moving);
+  assert.equal(await page.evaluate(()=>__STUDIO.doorProgress),1);
+  for(const service of ['clean','leather','trim','ambient']){
+   await page.evaluate(v=>document.querySelector('[data-cabin="'+v+'"]').click(),service);await page.waitForFunction(()=>!__STUDIO.moving);
+   assert.equal(await page.evaluate(()=>__STUDIO.state.cabin),service);
+  }
+  await page.selectOption('#leather-color','#805335');
+  assert((await page.evaluate(()=>__STUDIO.cabinMaterials)).every(m=>m.color==='805335'));
+  await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(out,'studio-cabin-'+viewport.width+'.png')});
+  await page.evaluate(()=>document.querySelector('#exterior').click());await page.waitForFunction(()=>!__STUDIO.moving);
+  assert.equal(await page.evaluate(()=>__STUDIO.doorProgress),0);
+
   assert.equal(errors.length,0);await page.screenshot({path:path.join(out,'studio-'+viewport.width+'.png')});
   report.checks.push({viewport,requests,errors,stats:await page.evaluate(()=>__STUDIO.stats),pass:true});await page.close();
  }
- fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, all body colors including roof/spoiler, protected materials, desktop/mobile orbit, presets and film:',url);
+ fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, all body colors including roof/spoiler, protected materials, desktop/mobile orbit, presets, film, polish zones, cabin services and driver door:',url);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
