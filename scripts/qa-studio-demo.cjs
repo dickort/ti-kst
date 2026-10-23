@@ -11,7 +11,7 @@ const {chromium}=req('playwright');
  let available=false;
  for(let attempt=0;attempt<8;attempt++){
   const r=await api.request.get(url);
-  if(r.ok()&&(await r.text()).includes('studio-material-v5')){available=true;break;}
+  if(r.ok()&&(await r.text()).includes('studio-page-v6')){available=true;break;}
   await new Promise(resolve=>setTimeout(resolve,10000));
  }
  assert(available,'Deployed studio HTML must be available');
@@ -57,8 +57,11 @@ const {chromium}=req('playwright');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 
   assert.equal(swatches.length,15,'Expanded palette');
-  await page.evaluate(()=>{document.querySelector('#custom-color').value='#ec7f31';document.querySelector('#custom-color').dispatchEvent(new Event('input'));});
-  assert.equal(await page.evaluate(()=>__STUDIO.materials[0].color),'ec7f31');
+  await page.locator('#color-wheel').focus();const beforeWheel=await page.evaluate(()=>__STUDIO.state.color);await page.keyboard.press('ArrowRight');assert.notEqual(await page.evaluate(()=>__STUDIO.state.color),beforeWheel);
+  assert.equal(await page.locator('input[type=color]').count(),0);
+  assert.equal(await page.locator('#service-cards a').count(),28);
+  assert.equal(await page.evaluate(()=>__STUDIO.stats.posters),3);
+  const captures=await page.evaluate(()=>__STUDIO.stats.reflectionCaptures);await page.evaluate(()=>document.querySelector('[data-light=evening]').click());assert.equal(await page.evaluate(()=>__STUDIO.stats.reflectionCaptures),captures+1);await page.evaluate(()=>document.querySelector('[data-light=inspection]').click());
   for(const z of ['hood','side','roof','rear','all']){
    await page.selectOption('#polish-zone',z);await page.locator('#polish').fill('100');
    assert.equal(await page.evaluate(()=>__STUDIO.state.polishZone),z);
@@ -91,6 +94,14 @@ const {chromium}=req('playwright');
   await page.evaluate(()=>document.querySelector('#reset').click());
   assert.equal(await page.evaluate(()=>__STUDIO.ambient.active),0);
   assert.equal(errors.length,0);await page.screenshot({path:path.join(out,'studio-'+viewport.width+'.png')});
+  if(viewport.width>800){
+   await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForFunction(()=>__STUDIO.state.motion);
+   const intermediate=await page.evaluate(async()=>{document.querySelector('#door-toggle').click();const frames=[];for(let i=0;i<40;i++){await new Promise(requestAnimationFrame);frames.push(__STUDIO.doorProgress);}return frames;});
+   assert(new Set(intermediate.filter(x=>x>.01&&x<.99)).size>=5,'Visible intermediate door poses');
+   await page.waitForFunction(()=>!__STUDIO.moving,null,{timeout:120000});
+   assert.equal(await page.evaluate(()=>__STUDIO.doorProgress),1);
+   await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>!__STUDIO.state.motion);await page.evaluate(()=>document.querySelector('#door-toggle').click());assert.equal(await page.evaluate(()=>__STUDIO.doorProgress),0);
+  }
   report.checks.push({viewport,requests,errors,stats:await page.evaluate(()=>__STUDIO.stats),pass:true});await page.close();
  }
  fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, all body colors including roof/spoiler, protected materials, desktop/mobile orbit, presets, film, polish zones, 28 TI services, embedded ambient lighting, cabin materials and driver door:',url);
