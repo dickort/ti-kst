@@ -1,16 +1,19 @@
+import {grainTexture,ensureSurfaceUV,detailCabin} from './surface-detail.js';
+import {services} from './services.mjs';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniformsLib.js';
 const $=s=>document.querySelector(s),all=s=>[...document.querySelectorAll(s)];
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const state={ready:false,color:'#62747e',finish:'gloss',film:'none',zone:'hood',polish:0,view:0,motion:!reduced.matches,polishZone:'all',doorOpen:false,cabin:null,leather:'#24252a'};
+const state={ready:false,color:'#62747e',finish:'gloss',film:'none',zone:'hood',polish:0,view:0,motion:!reduced.matches,polishZone:'all',doorOpen:false,cabin:null,leather:'#24252a',service:null,ambientColor:'#65b9ff',ambientPower:70};
 const stats={tier:innerWidth<801||navigator.connection?.saveData?'mobile':'desktop',frames:0,adaptive:false};
 const uniforms={film:{value:0},zone:{value:0},polish:{value:0},polishing:{value:0},polishZone:{value:2}};
 let renderer,scene,camera,model,controls,flight=null,interacting=false,raf=0,visible=true,lastFrame=0,slow=0;
-const paints=[],leathers=[];let door,doorRest,doorMotion=null,doorProgress=0,ambient;
+const paints=[],leathers=[],plastics=[],chromes=[],windows=[];const textures={leather:grainTexture('leather'),perforated:grainTexture('perforated'),fabric:grainTexture('fabric'),carbon:grainTexture('carbon')};const ambience={active:{value:0},color:{value:new THREE.Color('#65b9ff')},power:{value:.7},inverse:{value:new THREE.Matrix4()}};let door,doorRest,doorMotion=null,doorProgress=0,ambient;
 const viewport=$('#viewport'),canvas=$('canvas'),status=$('#status');
-window.__STUDIO={state,stats,get moving(){return !!flight||!!doorMotion},get doorProgress(){return doorProgress},get cabinMaterials(){return leathers.map(m=>({name:m.name,color:m.color.getHexString(),roughness:m.roughness}))},get camera(){return camera?.position.toArray()},get materials(){return paints.map(m=>({name:m.name,color:m.color.getHexString(),map:!!m.map,roughness:m.roughness,metalness:m.metalness}))}};
+window.__STUDIO={state,stats,get moving(){return !!flight||!!doorMotion},get doorProgress(){return doorProgress},get serviceCount(){return Object.keys(services).length},get ambient(){return {active:ambience.active.value,power:ambience.power.value,color:ambience.color.value.getHexString(),lightCount:ambient?.children.length}},get cabinMaterials(){return leathers.map(m=>({name:m.name,color:m.color.getHexString(),roughness:m.roughness}))},get camera(){return camera?.position.toArray()},get materials(){return paints.map(m=>({name:m.name,color:m.color.getHexString(),map:!!m.map,roughness:m.roughness,metalness:m.metalness}))}};
 all('[data-view]').forEach(b=>b.disabled=true);
 function fallback(message){state.ready=false;cancelAnimationFrame(raf);raf=0;document.body.classList.add('fallback');$('#poster').hidden=false;canvas.hidden=true;$('#controls').disabled=true;all('[data-view]').forEach(b=>b.disabled=true);$('#motion').disabled=true;status.textContent=message;$('#scroll-hint').textContent='';stats.error=message;metrics();}
 function metrics(){$('#metrics').textContent=JSON.stringify(stats,null,2);}
@@ -22,7 +25,9 @@ const points=[
  {eye:[-6.2,3.2,-7.8],at:[0,.75,0]},
  {eye:[.1,12.8,-1],at:[0,.7,0]},
  {eye:[3.6,1.85,-1.4],at:[.20,.85,.15]},
- {eye:[10,7,14],at:[0,2,0]}
+ {eye:[10,7,14],at:[0,2,0]},
+ {eye:[3,1.7,-.7],at:[.42,1,.45]},
+ {eye:[2.8,1.65,-1.5],at:[.25,.8,-.3]}
 ];
 function preset(value){
  const p=points[value],at=new THREE.Vector3(...p.at),eye=new THREE.Vector3(...p.eye);
@@ -36,7 +41,7 @@ function preset(value){
    eye.sub(at).multiplyScalar(fit).add(at);
   }
  }
- if(value===5&&innerWidth<801)eye.sub(at).multiplyScalar(1.45).add(at);
+ if(value>=5&&value!==6&&innerWidth<801)eye.sub(at).multiplyScalar(1.45).add(at);
  if(value===6&&innerWidth<801)eye.sub(at).multiplyScalar(1.25).add(at);
  return {eye,at};
 }
@@ -69,7 +74,7 @@ function render(now){
   camera.position.setFromSpherical(a).add(controls.target);controls.update();
   if(t===1)flight=null;
  }
- if(doorMotion){const t=Math.min(1,(now-doorMotion.start)/700),e=t*t*(3-2*t);doorProgress=THREE.MathUtils.lerp(doorMotion.from,doorMotion.to,e);door.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*doorProgress));if(t===1)doorMotion=null;}
+ if(doorMotion){renderer.shadowMap.needsUpdate=true;const t=Math.min(1,(now-doorMotion.start)/700),e=t*t*(3-2*t);doorProgress=THREE.MathUtils.lerp(doorMotion.from,doorMotion.to,e);door.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*doorProgress));if(t===1)doorMotion=null;}
  const begin=performance.now();renderer.render(scene,camera);stats.lastRenderSubmitMs=+(performance.now()-begin).toFixed(2);stats.frames++;
  if((flight||interacting)&&lastFrame&&now-lastFrame>40&&now-lastFrame<300){slow++;if(slow>8&&!stats.adaptive){renderer.setPixelRatio(Math.max(.75,renderer.getPixelRatio()*.7));stats.adaptive=true;stats.pixelRatio=renderer.getPixelRatio();}}
  lastFrame=flight||interacting?now:0;if(flight||doorMotion)invalidate();else metrics();
@@ -81,7 +86,7 @@ function resize(){
 }
 function chooseView(value){
  if(!controls)return;document.body.dataset.sceneView=value;state.view=value;
- if(value===5)setDoor(true);
+ if(value>=5&&value!==6)setDoor(true);
  const p=preset(value);all('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.view===value)));
  if(state.motion&&state.ready){
   const a=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)),b=new THREE.Spherical().setFromVector3(p.eye.clone().sub(p.at));
@@ -107,6 +112,7 @@ function splitPaintSurface(mesh,material,region){
  return [material.clone(),coating];
 }
 function update(){
+ for(const key of ['finish','film'])all('[data-'+key+']').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[key]===state[key])));
  const finishes={gloss:[.17,.42,1],matte:[.72,.08,.02],satin:[.38,.24,.18],chrome:[.065,1,.08]};
  const [r,m,c]=finishes[state.finish];paints.forEach(p=>{p.color.set(state.color);p.roughness=r;p.metalness=m;p.clearcoat=c;p.clearcoatRoughness=.12;});
  uniforms.film.value=['none','clear','matte','color'].indexOf(state.film);uniforms.zone.value=['hood','side','all','roof','rear'].indexOf(state.zone);uniforms.polish.value=state.polish/100;uniforms.polishZone.value=['hood','side','all','roof','rear'].indexOf(state.polishZone);
@@ -144,10 +150,11 @@ function paint(original){
 function room(){
  const studio=new THREE.Group();scene.add(studio);
  const material=(color,roughness=.72,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
- const wall=material('#454a50'),floor=material('#363b41'),dark=material('#151c24'),metal=material('#7f8994',.32,.7),rubber=material('#14181c');
- const box=(x,y,z,w,h,d,mat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);studio.add(o);return o;};
+ const wall=material('#363a3e'),floor=new THREE.MeshPhysicalMaterial({color:'#595a59',roughness:.43,metalness:.12,clearcoat:.25,clearcoatRoughness:.4}),dark=material('#151c24'),metal=material('#7f8994',.32,.7),rubber=material('#14181c');
+ const plaster=grainTexture('plaster'),stone=grainTexture('stone');plaster.repeat.set(5,3);stone.repeat.set(12,14);wall.bumpMap=plaster;wall.bumpScale=.025;wall.roughnessMap=plaster;floor.bumpMap=stone;floor.bumpScale=.008;floor.roughnessMap=stone;
+ const box=(x,y,z,w,h,d,mat)=>{const o=new THREE.Mesh(new RoundedBoxGeometry(w,h,d,2,Math.min(.025,w/5,h/5,d/5)),mat);o.position.set(x,y,z);o.castShadow=h>.05;o.receiveShadow=true;studio.add(o);return o;};
  // Interior-facing planes make the near wall a cutaway when orbiting outside the room.
- const panel=(x,y,z,w,h,angle,mat)=>{const o=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);o.position.set(x,y,z);o.rotation.y=angle;studio.add(o);return o;};
+ const panel=(x,y,z,w,h,angle,mat)=>{const o=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);o.position.set(x,y,z);o.rotation.y=angle;o.receiveShadow=true;studio.add(o);return o;};
  box(0,-.10,0,22,.18,26,floor);
  const ceiling=new THREE.Mesh(new THREE.PlaneGeometry(14,18),dark);ceiling.rotation.x=Math.PI/2;ceiling.position.y=5.9;studio.add(ceiling);
  panel(-7,2.8,0,18,5.6,Math.PI/2,wall);panel(7,2.8,0,18,5.6,-Math.PI/2,wall);
@@ -160,12 +167,12 @@ function room(){
  box(0,-.08,-16,17,.12,14,material('#89929a'));panel(0,2.8,-22,24,5.6,0,new THREE.MeshBasicMaterial({color:'#a9bdcd',fog:false}));
  for(const x of [-5,5]){box(x,.5,-12,.6,1,.6,dark);box(x,1.3,-12,.08,1.1,.08,metal);}
  // Large-format concrete tiles and a recessed wash-bay drain.
- const grout=material('#242b32');for(let x=-6;x<=6;x+=2)box(x,.002,0,.014,.005,18,grout);
- for(let z=-8;z<=8;z+=2)box(0,.002,z,14,.005,.014,grout);
+ const grout=material('#46494a');for(let x=-6;x<=6;x+=2)box(x,.002,0,.005,.005,18,grout);
+ for(let z=-8;z<=8;z+=2)box(0,.002,z,14,.005,.005,grout);
  box(0,.006,-5,5,.015,.22,dark);for(let x=-2.4;x<2.5;x+=.12)box(x,.017,-5,.035,.01,.20,metal);
  // Wall panels, service line and vertical inspection lights.
  const led=new THREE.MeshBasicMaterial({color:new THREE.Color(3.2,3.3,3.5)}),warm=new THREE.MeshBasicMaterial({color:new THREE.Color(2.4,1.8,1.15)});
- for(const x of [-6.96,6.96]){const angle=x<0?Math.PI/2:-Math.PI/2;for(let z=-7;z<=7;z+=2){panel(x,2.6,z,1.96,4.7,angle,material(z%4===0?'#343b44':'#3e454e'));}panel(x+(x<0?.02:-.02),.5,0,18,.7,angle,dark);}
+ for(const x of [-6.96,6.96]){const angle=x<0?Math.PI/2:-Math.PI/2;for(let z=-7;z<=7;z+=2){panel(x,2.6,z,1.96,4.7,angle,wall);}panel(x+(x<0?.02:-.02),.5,0,18,.7,angle,dark);}
  for(const x of [-6.8,6.8])for(const z of [-5,0,5]){panel(x,2.6,z,.07,3.5,x<0?Math.PI/2:-Math.PI/2,led);}
  // Suspended rectangular luminaires: dark housings, luminous undersides, suspension rods.
  for(const z of [-3.2,1.2,5.6])for(const x of [-2.65,2.65]){
@@ -180,29 +187,45 @@ function room(){
   box(-6,.55,-4+i*1.0,1.25,1.1,.95,dark);box(-6,1.13,-4+i*1.0,1.35,.06,1,metal);
   for(let y=.25;y<1;y+=.24){box(-5.36,y,-4+i,.025,.20,.88,material('#333d48'));box(-5.33,y+.04,-4+i,.035,.025,.28,metal);}
  }
- for(let i=0;i<6;i++){box(-5.85,1.32,-3.8+i*.28,.13,.32,.13,material(i%2?'#789083':'#a0aaba'));box(-5.85,1.52,-3.8+i*.28,.07,.08,.07,dark);}
- const reel=new THREE.Mesh(new THREE.TorusGeometry(.34,.075,8,32),rubber);reel.rotation.y=Math.PI/2;reel.position.set(-6.65,2.1,3);studio.add(reel);
- // Mobile detailing cart and vacuum, kept outside the car orbit.
- box(5,.7,-4,1.0,.10,.65,metal);box(5,.25,-4,1,.10,.65,dark);
- for(const x of [4.56,5.44])for(const z of [-4.27,-3.73]){box(x,.5,z,.035,.85,.035,metal);const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.06,12),rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.10,z);studio.add(wheel);}
- box(5,.88,-4,.4,.25,.3,material('#8c795f'));box(5.6,.45,2,.55,.8,.55,metal);
+
+ const cylinder=(x,y,z,r,h,mat)=>{const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,24),mat);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;studio.add(o);return o;};
+ const tube=(coords,r,mat)=>{const curve=new THREE.CatmullRomCurve3(coords.map(p=>new THREE.Vector3(...p)));const o=new THREE.Mesh(new THREE.TubeGeometry(curve,40,r,8,false),mat);o.castShadow=true;studio.add(o);return o;};
+ // Bottles with necks, trigger heads and labels instead of block placeholders.
+ const labelMat=material('#d4d7d1');
+ for(let i=0;i<6;i++){const z=-3.8+i*.28;const bottleMat=material(i%2?'#49685a':'#63717c',.33,.05);cylinder(-5.85,1.32,z,.065,.32,bottleMat);cylinder(-5.85,1.52,z,.027,.08,dark);cylinder(-5.85,1.33,z,.066,.12,labelMat);box(-5.82,1.57,z,.13,.035,.04,dark);}
+ // Hose on its wall reel, with a curved hanging return and brass coupling.
+ const reel=new THREE.Mesh(new THREE.CylinderGeometry(.30,.30,.20,32),dark);reel.rotation.z=Math.PI/2;reel.position.set(-6.6,2.1,3);studio.add(reel);
+ for(let i=0;i<5;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(.25+i*.012,.018,8,40),rubber);ring.rotation.y=Math.PI/2;ring.position.set(-6.47,2.1,3);studio.add(ring);}
+ tube([[-6.45,2.05,3.25],[-6.35,.8,3.3],[-6.15,.18,3.55],[-5.8,.20,3.8],[-5.7,.65,3.7]],.022,rubber);
+ cylinder(-5.7,.70,3.7,.036,.14,material('#947c44',.3,.8));
+ // Stainless extractor, hose, castors and trolley with folded microfibres.
+ cylinder(5.5,.47,2,.30,.65,metal);cylinder(5.5,.83,2,.32,.12,dark);
+ tube([[5.5,.85,2],[5.05,.7,2.4],[4.9,.15,2.3],[5.1,.10,1.5],[5.4,.5,1.35]],.045,rubber);
+ for(const x of [5.27,5.73])for(const z of [1.8,2.2])cylinder(x,.10,z,.08,.10,dark);
+ box(5,.7,-4,1.0,.045,.65,metal);box(5,.25,-4,1,.045,.65,dark);
+ for(const x of [4.56,5.44])for(const z of [-4.27,-3.73]){box(x,.5,z,.025,.85,.025,metal);const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.05,16),rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.10,z);studio.add(wheel);}
+ for(let i=0;i<3;i++)box(5,.77+i*.035,-4,.42,.035,.32,material(i%2?'#606d79':'#9b8f7b'));
+ cylinder(4.73,.88,-4,.06,.3,dark);
+ // Service outlets and wall-mounted inspection equipment.
+ for(const z of [-3,0,3]){box(-6.91,1.5,z,.05,.16,.12,labelMat);box(-6.87,1.5,z,.015,.075,.055,dark);}
+ for(const x of [-3.18,3.18]){box(x,3,-8.72,.07,3,.06,metal);box(x,1.1,-8.72,.12,.25,.10,dark);}
  // Typographic signs are part of the architecture, not floating UI.
  function sign(text,x,y,z,w,h,angle){const c=document.createElement('canvas');c.width=1024;c.height=256;const ctx=c.getContext('2d');ctx.fillStyle='#19212a';ctx.fillRect(0,0,1024,256);ctx.fillStyle='#e7edf2';ctx.font='500 94px Arial';ctx.textAlign='center';ctx.fillText(text,512,158);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;panel(x,y,z,w,h,angle,new THREE.MeshBasicMaterial({map:texture}));}
  sign('ТИ / DETAILING',0,3.5,8.96,6,1.5,Math.PI);sign('01 / SURFACE LAB',-6.92,3.6,0,3.8,.95,Math.PI/2);sign('ENTRY / 01',0,5.05,-8.94,3.2,.7,0);
- scene.add(new THREE.HemisphereLight(0xdde9ff,0x687483,1.65));RectAreaLightUniformsLib.init();
- for(const x of [-3.4,3.4]){const l=new THREE.RectAreaLight(0xffffff,7,2.4,6);l.position.set(x,4.6,.4);l.lookAt(0,.5,0);scene.add(l);}
+ scene.add(new THREE.HemisphereLight(0xdde9ff,0x50515a,.85));RectAreaLightUniformsLib.init();
+ for(const x of [-3.4,3.4]){const l=new THREE.RectAreaLight(0xfff6eb,5,2.4,6);l.position.set(x,4.6,.4);l.lookAt(0,.5,0);scene.add(l);}
  const entrance=new THREE.RectAreaLight(0xc9dfff,5,6,4);entrance.position.set(0,2.2,-8.8);entrance.lookAt(0,1,0);scene.add(entrance);
- const key=new THREE.DirectionalLight(0xfff5e9,1.8);key.position.set(4,6,6);scene.add(key);
+ const key=new THREE.DirectionalLight(0xfff5e9,1.8);key.position.set(3.5,4.5,4);key.castShadow=true;key.shadow.mapSize.setScalar(stats.tier==='mobile'?1024:2048);Object.assign(key.shadow.camera,{left:-10,right:10,top:10,bottom:-10,near:.1,far:25});key.shadow.bias=-.0002;key.shadow.normalBias=.02;key.shadow.radius=4;scene.add(key);
  const env=new THREE.PMREMGenerator(renderer);scene.environment=env.fromScene(scene,.06,.1,60).texture;env.dispose();
  const c=document.createElement('canvas');c.width=c.height=128;const cx=c.getContext('2d'),g=cx.createRadialGradient(64,64,5,64,64,64);g.addColorStop(0,'rgba(8,12,18,.65)');g.addColorStop(.6,'rgba(8,12,18,.35)');g.addColorStop(1,'rgba(8,12,18,0)');cx.fillStyle=g;cx.fillRect(0,0,128,128);
  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(3.9,6.5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));shadow.rotation.x=-Math.PI/2;shadow.position.y=.02;scene.add(shadow);
- stats.room='architectural bay / open sectional gate / inspection lights / cabinetry';
+ stats.shadows=true;stats.room='architectural bay / open sectional gate / inspection lights / cabinetry';
 }
 async function boot(){
  try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(devicePixelRatio,stats.tier==='mobile'?1.25:1.5));stats.pixelRatio=renderer.getPixelRatio();
- renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
  scene=new THREE.Scene();scene.background=new THREE.Color('#20252c');scene.fog=new THREE.Fog('#20252c',18,40);
  camera=new THREE.PerspectiveCamera(36,1,.1,70);setupControls();room();resize();
  status.textContent='Загрузка экстерьера…';
@@ -215,25 +238,46 @@ async function boot(){
  const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3());model.scale.multiplyScalar(5.15/Math.max(size.x,size.z));
  box.setFromObject(model);const center=box.getCenter(new THREE.Vector3());model.position.x-=center.x;model.position.z-=center.z;model.position.y-=box.min.y;
  model.updateMatrixWorld(true);stats.originalPaintMaps=[];stats.surfaceMapping=[];
- model.traverse(n=>{if(!n.isMesh)return;
+ model.traverse(n=>{if(!n.isMesh)return;n.castShadow=true;n.receiveShadow=n.name.startsWith('cabin__');
  if(n.name==='exterior__Black_gloss'||n.name==='exterior__Gray_line'){n.material=splitPaintSurface(n,n.material,'roof');return;}
  if(n.name==='exterior__Carbon_Fiber_Glossy'){n.material=splitPaintSurface(n,n.material,'spoiler');return;}
  const cabin=n.name.startsWith('cabin__');
  const transform=m=>{
-  if((cabin||n.name.startsWith('door__'))&&/^(Leather_Black|Leather_Perforated|Alcantara_Black)$/.test(m.name)){m=m.clone();m.userData.baseColor=m.color.clone();m.userData.baseRoughness=m.roughness;leathers.push(m);return m;}
-  if(cabin&&m.name!=='Glass')return m.clone();
+  if((cabin||n.name.startsWith('door__'))&&/^(Leather_Black|Leather_Perforated|Alcantara_Black)$/.test(m.name)){m=detailCabin(n,m,textures);m.userData.baseColor=m.color.clone();m.userData.baseRoughness=m.roughness;leathers.push(m);return m;}
+  if((cabin||n.name.startsWith('door__'))&&/Matte_Plastic_Interior|Satin_Interior|Carbon_Fiber_Interior|Stitch|Dash|Display|Steering_wheel/.test(m.name)){m=detailCabin(n,m,textures);if(/Plastic|Dash/.test(m.name))plastics.push(m);return m;}
+  if(cabin&&m.name!=='Glass')return detailCabin(n,m,textures);
   if(/^(Carpaint|Satin_Metallic_(Blue|Dark|Black)|Blue_plastic)$/i.test(m.name)){stats.originalPaintMaps.push({name:m.name,map:!!m.map});return paint(m);}
   m=m.clone();
-  if(/^(Glass|Rear_glass)$/i.test(m.name)){m.color.set('#152025');m.transparent=false;m.opacity=1;m.depthWrite=true;m.metalness=.3;m.roughness=.16;}
+  if(/^(Chrome|Chrome_2|Aluminum)$/.test(m.name)){m.userData.original=m.color.clone();chromes.push(m);}
+  if(/^(Glass|Rear_glass)$/i.test(m.name)){m.color.set('#152025');m.transparent=false;m.opacity=1;m.depthWrite=true;m.metalness=.3;m.roughness=.16;windows.push(m);}
   if(/^Headlight_glass$/i.test(m.name)){m.transparent=true;m.opacity=.12;m.depthWrite=false;m.roughness=.08;}
   if(/^Front_DRL$/i.test(m.name)){m.emissive.set('#ffffff');m.emissiveIntensity=1.4;}
   return m;
  };
  n.material=Array.isArray(n.material)?n.material.map(transform):transform(n.material);
  });
- scene.add(model);door=model.getObjectByName('driverDoor');doorRest=door?.quaternion.clone();stats.doorRig=!!door;stats.cabinMaterials=leathers.length;
- ambient=new THREE.Group();const glow=new THREE.MeshBasicMaterial({color:0x65b9ff});for(const x of [-.42,.42]){const strip=new THREE.Mesh(new THREE.BoxGeometry(.012,.012,.65),glow);strip.position.set(x,.60,.04);ambient.add(strip);}model.add(ambient);ambient.visible=false;
- const cabinLight=new THREE.PointLight(0xe6efff,2.5,3,2);cabinLight.position.set(0,1.6,0);scene.add(cabinLight);
+ scene.add(model);renderer.shadowMap.needsUpdate=true;door=model.getObjectByName('driverDoor');doorRest=door?.quaternion.clone();stats.doorRig=!!door;stats.cabinMaterials=leathers.length;
+ ambience.inverse.value.copy(model.matrixWorld).invert();ambient=new THREE.Group();model.add(ambient);
+ for(const x of [-.25,.25]){const light=new THREE.PointLight(state.ambientColor,.25,.8,2);light.position.set(x,.38,.22);ambient.add(light);}ambient.visible=false;
+ model.traverse(n=>{if(!n.isMesh||!(n.name.startsWith('cabin__')||n.name.startsWith('door__')))return;
+ for(const m of Array.isArray(n.material)?n.material:[n.material]){if(!/Leather|Satin_Interior|Matte_Plastic|Dash/.test(m.name))continue;
+ m.onBeforeCompile=shader=>{
+  Object.assign(shader.uniforms,{ambienceActive:ambience.active,ambienceColor:ambience.color,ambiencePower:ambience.power,interiorInverse:ambience.inverse});
+  shader.vertexShader='varying vec3 cabinPosition;uniform mat4 interiorInverse;\n'+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>','#include <worldpos_vertex>\ncabinPosition=(interiorInverse*modelMatrix*vec4(transformed,1.)).xyz;');
+  shader.fragmentShader='varying vec3 cabinPosition;uniform float ambienceActive;uniform float ambiencePower;uniform vec3 ambienceColor;\n'+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+   float dash=step(.34,cabinPosition.z)*step(cabinPosition.z,.54)*step(abs(cabinPosition.x),.48);
+   float doorBand=step(.455,abs(cabinPosition.x))*step(-.5,cabinPosition.z)*step(cabinPosition.z,.36);
+   float dashHeight=.593+.045*abs(cabinPosition.x);
+   float doorHeight=.555+.07*cabinPosition.z;
+   float diffuser=dash*(1.-smoothstep(.0015,.004,abs(cabinPosition.y-dashHeight)))+doorBand*(1.-smoothstep(.0015,.004,abs(cabinPosition.y-doorHeight)));
+   float bounce=dash*exp(-abs(cabinPosition.y-dashHeight)*65.)+doorBand*exp(-abs(cabinPosition.y-doorHeight)*65.);
+   totalEmissiveRadiance+=ambienceColor*ambienceActive*ambiencePower*(diffuser*2.8+bounce*.15);
+  `);
+ };m.customProgramCacheKey=()=> 'cabin-diffuser-v1';}
+ });
+ const cabinLight=new THREE.PointLight(0xe6efff,.65,3,2);cabinLight.position.set(0,1.6,0);scene.add(cabinLight);
  window.__STUDIO.surfaceAt=(x,z)=>{const hits=new THREE.Raycaster(new THREE.Vector3(x,5,z),new THREE.Vector3(0,-1,0)).intersectObject(model,true);const h=hits[0];if(!h)return null;const m=Array.isArray(h.object.material)?h.object.material[h.face.materialIndex]:h.object.material;return {mesh:h.object.name,material:m.name,color:m.color.getHexString(),painted:paints.includes(m),point:h.point.toArray()};};
  window.__STUDIO.projectedBounds=()=>{camera.updateMatrixWorld();const b=new THREE.Box3().setFromObject(model);return [b.min.x,b.max.x].flatMap(x=>[b.min.y,b.max.y].flatMap(y=>[b.min.z,b.max.z].map(z=>new THREE.Vector3(x,y,z).project(camera).toArray())));};
  update();positionCamera();
@@ -250,22 +294,46 @@ $('#polish-zone').onchange=e=>{state.polishZone=e.target.value;uniforms.polishin
 $('#polish').oninput=e=>{state.polish=+e.target.value;uniforms.polishing.value=1;update();};
 $('#custom-color').oninput=e=>{state.color=e.target.value;$('#color-name').textContent=state.color;all('[data-color]').forEach(n=>n.setAttribute('aria-pressed','false'));update();};
 all('[data-view]').forEach(b=>b.onclick=()=>chooseView(+b.dataset.view));
-$('#reset').onclick=()=>{setDoor(false);setCabin(null);uniforms.polishing.value=0;$('#polish-zone').value=state.polishZone='all';all('[data-color]')[0].click();all('[data-finish]')[0].click();all('[data-film]')[0].click();$('#zone').value=state.zone='hood';$('#polish').value=state.polish=0;chooseView(0);update();};
+$('#reset').onclick=()=>{state.service=null;chromes.forEach(m=>m.color.copy(m.userData.original));windows.forEach(m=>m.color.set('#152025'));setDoor(false);setCabin(null);uniforms.polishing.value=0;$('#polish-zone').value=state.polishZone='all';all('[data-color]')[0].click();all('[data-finish]')[0].click();all('[data-film]')[0].click();$('#zone').value=state.zone='hood';$('#polish').value=state.polish=0;chooseView(0);update();};
 
 function setDoor(open){
- if(!door)return;state.doorOpen=open;$('#door-toggle').setAttribute('aria-pressed',String(open));$('#door-toggle').textContent=open?'Закрыть водительскую дверь':'Открыть водительскую дверь';
+ if(!door)return;renderer.shadowMap.needsUpdate=true;state.doorOpen=open;$('#door-toggle').setAttribute('aria-pressed',String(open));$('#door-toggle').textContent=open?'Закрыть водительскую дверь':'Открыть водительскую дверь';
  if(state.motion){doorMotion={from:doorProgress,to:open?1:0,start:performance.now()};}else{doorMotion=null;doorProgress=open?1:0;door.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*doorProgress));}invalidate();
 }
 function setCabin(service){
- state.cabin=service;const text={clean:'Химчистка: сиденья, ковролин и обивка. Выделена зона работ; результат чистки зависит от состояния материала.',leather:'Уход за кожей: очистка и защитный состав. Показан более мягкий матовый финиш сидений.',trim:'Перетяжка: примерка цвета кожаных поверхностей. Выберите оттенок ниже.',ambient:'Контурная подсветка: эскиз расположения световых линий в салоне.'};
+ state.cabin=service;const text={clean:'Химчистка: сиденья, ковролин и обивка. Выделена зона работ; результат чистки зависит от состояния материала.',leather:'Уход за кожей: очистка и защитный состав. Показан более мягкий матовый финиш сидений.',trim:'Перетяжка: примерка цвета кожаных поверхностей. Выберите оттенок ниже.',ambient:'Встроенные световые полосы панели и дверных карт, отражённый свет и подсветка ног. Выберите цвет и яркость.',plastic:'Восстановление пластика: показана зона отделки панели и дверей. Технология зависит от повреждения.',steering:'Перешив руля: показана зона работ. Материал и рисунок строчки подбираются индивидуально.',sound:'Шумоизоляция: двери, пол и арки. Скрытые слои под обивкой здесь не моделируются.'};
  $('#cabin-description').textContent=text[service]||'Откройте дверь и рассмотрите доступные услуги салона.';
  leathers.forEach(m=>{m.color.copy(m.userData.baseColor);m.roughness=m.userData.baseRoughness;m.emissive.set(0);if(service==='trim')m.color.set(state.leather);if(service==='leather')m.roughness=.65;if(service==='clean'){m.emissive.set('#1b3441');m.emissiveIntensity=.35;}});
- if(ambient)ambient.visible=service==='ambient';all('[data-cabin]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cabin===service)));if(service)chooseView(5);invalidate();
+ ambience.active.value=service==='ambient'?1:0;if(ambient)ambient.visible=service==='ambient';plastics.forEach(m=>{m.emissive.set(service==='plastic'?'#17202a':'#000000');});all('[data-cabin]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cabin===service)));if(service)chooseView(service==='steering'?7:['leather','trim','clean'].includes(service)?8:5);invalidate();
 }
 $('#door-toggle').onclick=()=>{setDoor(!state.doorOpen);if(state.doorOpen)chooseView(1);else if(state.view===5)chooseView(0);};
 all('[data-cabin]').forEach(b=>b.onclick=()=>setCabin(b.dataset.cabin));
 $('#leather-color').onchange=e=>{state.leather=e.target.value;setCabin('trim');};
+$('#ambient-color').onchange=e=>{state.ambientColor=e.target.value;ambience.color.value.set(state.ambientColor);ambient?.children.forEach(l=>l.color.set(state.ambientColor));setCabin('ambient');};
+$('#ambient-power').oninput=e=>{state.ambientPower=+e.target.value;ambience.power.value=state.ambientPower/100;ambient?.children.forEach(l=>l.intensity=.35*state.ambientPower/100);setCabin('ambient');};
 $('#exterior').onclick=()=>{setCabin(null);setDoor(false);chooseView(0);};
+
+
+const cabinServices={'interior-clean':'clean',leather:'leather',plastic:'plastic',steering:'steering','interior-trim':'trim',soundproof:'sound',ambient:'ambient'};
+function showService(slug){
+ const item=services[slug];state.service=slug;state.film='none';uniforms.polishing.value=0;$('#service-title').textContent=item.title;$('#service-lead').textContent=item.lead;$('#service-link').href='../../service.html?service='+encodeURIComponent(slug);
+ chromes.forEach(m=>m.color.copy(m.userData.original));windows.forEach(m=>m.color.set('#152025'));
+ let mode='Показана зона услуги. Комплектация и результат определяются после осмотра автомобиля.';
+ if(cabinServices[slug]){setCabin(cabinServices[slug]);mode=$('#cabin-description').textContent;}
+ else{setCabin(null);setDoor(false);chooseView(({tint:1,'forged-wheels':1,anticorrosion:1,closers:1,steering:5})[slug]??0);
+  if(slug==='anti-chrome'){chromes.forEach(m=>m.color.set('#161a20'));mode='Примерка тёмной отделки хромированных элементов.';}
+  if(slug==='tint'){windows.forEach(m=>m.color.set('#030608'));mode='Визуальная примерка более тёмного стекла; не образец светопропускания.';}
+  if(['body-polish','protective-polish'].includes(slug)){state.polishZone='all';$('#polish-zone').value='all';uniforms.polishing.value=1;mode='Сравните состояние покрытия ползунком полировки.';}
+  if(slug==='ppf'){all('[data-film="clear"]')[0].click();mode='Примерка прозрачной защитной плёнки. Зону нанесения можно менять выше.';}
+  if(slug==='protective-coating'){state.finish='gloss';mode='Пример глянцевого финиша. Состав и срок службы покрытия подбираются отдельно.';}
+  if(slug==='closers'){setDoor(true);mode='Откройте и закройте водительскую дверь. Это демонстрация движения, не модель конкретного доводчика.';}
+  if(['alarm','steps','dashcam','towbar','suspension','forged-wheels'].includes(slug))mode='Услуга есть в каталоге ТИ. Конкретное оборудование не установлено на этой 3D-модели; подбор выполняется отдельно.';
+ }
+ $('#service-mode').textContent=mode;update();
+}
+function serviceOptions(){const direction=$('#service-direction').value;$('#service-choice').replaceChildren(...Object.entries(services).filter(([,s])=>s.direction===direction).map(([id,s])=>new Option(s.title,id)));}
+$('#service-direction').onchange=()=>{serviceOptions();showService($('#service-choice').value);};$('#service-choice').onchange=e=>showService(e.target.value);serviceOptions();
+$('#service-title').textContent='28 услуг ТИ';$('#service-lead').textContent='Выберите направление и услугу из каталога существующего сайта.';$('#service-mode').textContent='Визуальные примеры доступны для покрытий, отделки и подсветки. Для скрытых работ показана зона.';
 
 function motionUI(){$('#motion').setAttribute('aria-pressed',String(state.motion));$('#motion').textContent='Плавные переходы: '+(state.motion?'вкл.':'выкл.');$('#scroll-hint').textContent=innerWidth>800?'Потяните, чтобы вращать · колесо — масштаб':'Вращайте пальцем · два пальца — масштаб';}
 $('#motion').onclick=()=>{state.motion=!state.motion;motionUI();if(!state.motion&&flight){camera.position.setFromSpherical(flight.b).add(flight.at);controls.target.copy(flight.at);controls.update();flight=null;}invalidate();};

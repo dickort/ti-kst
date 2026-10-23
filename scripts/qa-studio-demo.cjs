@@ -11,7 +11,7 @@ const {chromium}=req('playwright');
  let available=false;
  for(let attempt=0;attempt<8;attempt++){
   const r=await api.request.get(url);
-  if(r.ok()&&(await r.text()).includes('studio-atelier-v4')){available=true;break;}
+  if(r.ok()&&(await r.text()).includes('studio-material-v5')){available=true;break;}
   await new Promise(resolve=>setTimeout(resolve,10000));
  }
  assert(available,'Deployed studio HTML must be available');
@@ -75,9 +75,24 @@ const {chromium}=req('playwright');
   await page.evaluate(()=>document.querySelector('#exterior').click());await page.waitForFunction(()=>!__STUDIO.moving);
   assert.equal(await page.evaluate(()=>__STUDIO.doorProgress),0);
 
+
+  assert.equal(await page.evaluate(()=>__STUDIO.serviceCount),28);
+  const catalogue=[];
+  for(const dir of ['preserve','restore','tune']){
+   await page.selectOption('#service-direction',dir);
+   const ids=await page.locator('#service-choice option').evaluateAll(ns=>ns.map(n=>n.value));
+   for(const id of ids){await page.selectOption('#service-choice',id);assert.equal(await page.evaluate(()=>__STUDIO.state.service),id);catalogue.push(id);}
+  }
+  assert.equal(new Set(catalogue).size,28);
+  await page.evaluate(()=>document.querySelector('[data-cabin="ambient"]').click());
+  await page.selectOption('#ambient-color','#ba66ff');await page.locator('#ambient-power').fill('85');
+  assert.deepEqual(await page.evaluate(()=>__STUDIO.ambient),{active:1,power:.85,color:'ba66ff',lightCount:2});
+  await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(out,'studio-ambient-'+viewport.width+'.png')});
+  await page.evaluate(()=>document.querySelector('#reset').click());
+  assert.equal(await page.evaluate(()=>__STUDIO.ambient.active),0);
   assert.equal(errors.length,0);await page.screenshot({path:path.join(out,'studio-'+viewport.width+'.png')});
   report.checks.push({viewport,requests,errors,stats:await page.evaluate(()=>__STUDIO.stats),pass:true});await page.close();
  }
- fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, all body colors including roof/spoiler, protected materials, desktop/mobile orbit, presets, film, polish zones, cabin services and driver door:',url);
+ fs.writeFileSync(path.join(out,'studio-public.json'),JSON.stringify(report,null,2));console.log('PASS deployed studio + homepage, GLB/JS, all body colors including roof/spoiler, protected materials, desktop/mobile orbit, presets, film, polish zones, 28 TI services, embedded ambient lighting, cabin materials and driver door:',url);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
