@@ -4,7 +4,7 @@ import * as THREE from 'three';
 const hood=[0,1.03,1.45],side=[.92,.70,.12],glass=[0,1.22,.58],seat=[.40,.82,-.35];
 const entry=(kind,focus,eye,before,after,note='Визуальный пример. Возможность и результат работы определяются после осмотра.')=>({kind,focus,eye,before,after,note});
 export const demonstrations={
- 'ppf':entry('film',hood,[2.5,3.3,4.1],'Поверхность без плёнки','Прозрачный защитный слой','Условно выделен край плёнки. Это не испытание стойкости к ударам.'),
+ 'ppf':entry('film',hood,[2.5,3.3,4.1],'Поверхность без плёнки','Прозрачный защитный слой','Край плёнки условно приподнят, чтобы показать прозрачный слой. Это не испытание защиты.'),
  'windshield-film':entry('glassfilm',glass,[2.7,2.3,3.5],'Стекло без защитного слоя','Защитная плёнка на стекле','Край слоя усилен для наглядности; оптические свойства зависят от материала.'),
  'protective-polish':entry('swirls',hood,[2.3,3,3.7],'Мелкая риска и рассеянный блик','Более ровный лак и чёткие отражения'),
  'protective-coating':entry('coating',hood,[2.3,3,3.7],'Вода растекается по поверхности','Капли собираются на покрытии','Условная демонстрация смачивания, не расчёт химических свойств состава.'),
@@ -18,21 +18,23 @@ export const demonstrations={
  'glass-repair':entry('crack',glass,[2.5,2.4,3.3],'Скол с лучевыми трещинами','Заполненный скол, остаточный след','След ремонта может оставаться. Это не обещание полного исчезновения трещины.'),
  'interior-clean':entry('clean',seat,[2.1,1.75,.05],'Пятна на сиденье и обивке','Очищенная фактура материала'),
  'leather':entry('leather',seat,[2.1,1.75,.05],'Потёртая кожа и мелкие трещины','Восстановленный цвет и поверхность'),
- 'plastic':entry('plastic',[.3,.95,.45],[2.7,1.7,-.3],'Царапины на отделке панели','Восстановленная поверхность пластика'),
- 'soundproof':entry('layers',side,[4.3,2,2.4],'Металл дверной панели','Вибродемпфер и звукопоглощающий слой','Разнесённая схема слоёв рядом с дверью. Эффективность в децибелах здесь не моделируется.'),
+ 'plastic':entry('plastic',[.3,.95,.45],[1.6,1.35,-.25],'Царапины на отделке панели','Восстановленная поверхность пластика'),
+ 'soundproof':entry('layers',[1.6,.83,-.4],[4.5,1.9,.7],'Металл дверной панели','Вибродемпфер и звукопоглощающий слой','Разнесённая схема слоёв рядом с дверью. Эффективность в децибелах здесь не моделируется.'),
  'anti-chrome':entry('chrome',hood,[3.3,1.5,4.3],'Хромированная отделка','Тёмная отделка элементов'),
  'tint':entry('tint',glass,[4.1,2,1.2],'Исходная отделка стекла','Более тёмное стекло','Визуальная примерка, не образец светопропускания.'),
- 'steering':entry('steering',[.36,1,.42],[2.8,1.75,-.5],'Исходная обивка руля','Новая отделка и контрастная строчка','Пример отделки. Материал и рисунок шва согласовываются индивидуально.'),
+ 'steering':entry('steering',[.36,1,.42],[1.5,1.35,-.15],'Исходная обивка руля','Новая отделка и контрастная строчка','Пример отделки. Материал и рисунок шва согласовываются индивидуально.'),
  'interior-trim':entry('trim',seat,[2.1,1.75,.05],'Исходная обивка','Коньячная кожа и контрастные швы'),
  'alarm':entry('alarm',side,[4.4,2.2,2.7],'Охранный комплекс не показан','Блок и датчики охранного комплекса','Условная схема размещения, без воспроизведения схем подключения и конкретной модели.'),
- 'closers':entry('closer',side,[4.5,2.1,1.8],'Дверь прикрыта не полностью','Дверь плавно дотянута до закрытия','Демонстрация движения. Совместимость доводчика проверяется отдельно.'),
+ 'closers':entry('closer',[.9,.85,-.2],[3.1,1.5,.5],'Прикрываем дверь → доводчик дотягивает замок','Дверь закрыта без хлопка','Два этапа: дверь прикрывают, затем доводчик подтягивает замок. Иллюстрация движения; совместимость проверяется отдельно.'),
  'ambient':entry('ambient',[.3,.95,.3],[3.2,1.8,-.8],'Подсветка выключена','Свет в панели, дверях и нишах'),
  'steps':entry('step',[1.1,.28,0],[4.2,1.5,2.2],'Порог убран','Подножка выдвинута','Условная схема механизма. Не подтверждает возможность установки на этот AMG.'),
- 'dashcam':entry('camera',glass,[2.7,1.9,2.6],'Без дополнительного устройства','Регистратор у лобового стекла','Иллюстративный корпус и крепление; не конкретная модель регистратора.'),
+ 'dashcam':entry('camera',[0,1.28,.64],[1.7,1.65,2.0],'Без дополнительного устройства','Регистратор за лобовым стеклом','Стекло временно показано прозрачнее, чтобы рассмотреть крепление. Корпус иллюстративный, не конкретная модель.'),
  'towbar':entry('hitch',[0,.4,-2.8],[2.9,1.5,-4.7],'Без дополнительного оборудования','Сцепной узел и розетка','Схема оборудования. Допустимость установки и нагрузки не заявляются.'),
  'forged-wheels':entry('wheel',[1.4,.55,1.55],[4.4,1.6,3.8],'Исходный вид колеса','Образец пятиспицевого диска','Отдельный образец дизайна рядом с колесом. Размеры и совместимость подбираются по каталогу.'),
  'suspension':entry('spring',[1.4,.65,1.55],[4.4,1.6,3.8],'Исходное состояние схемы','Пружина и амортизатор','Вынесенная схема узла. Реальная подвеска не вскрыта; изменение клиренса не обещается.')
 };
+// Installation services open on the installed result; repairs open on the defect.
+for(const slug of ['ppf','windshield-film','protective-coating','radiator-mesh','anticorrosion','soundproof','anti-chrome','tint','interior-trim','alarm','ambient','steps','dashcam','towbar','forged-wheels','suspension'])demonstrations[slug].preview=1;
 const kinds=['none','swirls','paint','chips','dirt','film','coating','crack','glassfilm','clean','leather','plastic','trim','steering','tint','chrome','dent'];
 export function createServiceEffects({scene,model,paints,invalidate,setDoorFraction,setAmbientFraction,inspectionLight}){
  const scratchCanvas=document.createElement('canvas');scratchCanvas.width=scratchCanvas.height=1024;const cx=scratchCanvas.getContext('2d');cx.fillStyle='#000';cx.fillRect(0,0,1024,1024);let seed=4127;const random=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
@@ -116,6 +118,23 @@ export function createServiceEffects({scene,model,paints,invalidate,setDoorFract
  function tube(g,points,r,m){const path=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));const o=new THREE.Mesh(new THREE.TubeGeometry(path,48,r,8,false),m);g.add(o);return o;}
  function sphere(g,p,r,m){const o=new THREE.Mesh(new THREE.SphereGeometry(r,16,10),m);o.position.set(...p);g.add(o);return o;}
  function make(kind){const g=new THREE.Group();g.name='service-'+kind;g.visible=false;group.add(g);equipment[kind]=g;return g;}
+ // Lifted film edges are explanatory cutaways, sampled against the actual surface.
+ for(const kind of ['film','glassfilm']){
+  const g=make(kind),count=18,vertices=[],valid=[],indices=[];
+  for(let row=0;row<=count;row++)for(let col=0;col<=count;col++){
+   const u=col/count,v=row/count;
+   const origin=kind==='film'?new THREE.Vector3((u-.5)*1.5,3,.9+v*1.15):new THREE.Vector3((u-.5)*1.1,1.07+v*.34,4);
+   const direction=kind==='film'?new THREE.Vector3(0,-1,0):new THREE.Vector3(0,0,-1);
+   const hit=new THREE.Raycaster(origin,direction).intersectObject(model,true).find(h=>{const m=Array.isArray(h.object.material)?h.object.material[h.face.materialIndex]:h.object.material;return kind==='film'?paintSet.has(m):m.name==='Glass';});
+   valid.push(!!hit);const point=hit?.point.clone()||origin;
+   const lift=.009+Math.pow(Math.max(0,(u-.68)/.32),2)*Math.pow(Math.max(0,(v-.66)/.34),2)*.14;
+   if(kind==='film')point.y+=lift;else point.z+=lift;vertices.push(...point.toArray());
+  }
+  for(let row=0;row<count;row++)for(let col=0;col<count;col++){const a=row*(count+1)+col,b=a+1,c=a+count+1,d=c+1;if([a,b,c,d].every(i=>valid[i]))indices.push(a,c,b,b,c,d);}
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();
+  const sheet=new THREE.Mesh(geometry,new THREE.MeshPhysicalMaterial({color:'#b2d8df',metalness:0,roughness:.16,clearcoat:1,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));g.add(sheet);
+  for(const edge of [Array.from({length:count+1},(_,i)=>i),Array.from({length:count+1},(_,i)=>i*(count+1)+count),Array.from({length:count+1},(_,i)=>count*(count+1)+i)]){const points=edge.filter(i=>valid[i]).map(i=>vertices.slice(i*3,i*3+3));if(points.length>2)tube(g,points,.003,new THREE.MeshBasicMaterial({color:'#b2d8df',transparent:true,opacity:.7}));}
+ }
  {
  const g=make('dent');const diffuser=new THREE.Mesh(new THREE.PlaneGeometry(.07,1.5),new THREE.MeshBasicMaterial({color:new THREE.Color(2,2.2,2.5)}));diffuser.position.set(3,1.2,-1.05);diffuser.lookAt(.92,.70,.12);g.add(diffuser);
  }
@@ -123,7 +142,7 @@ export function createServiceEffects({scene,model,paints,invalidate,setDoorFract
  const g=make('mesh');g.position.set(0,.5,2.55);for(let i=-10;i<=10;i++)box(g,[i*.068,0,0],[.008,.28,.009],black);for(let i=-2;i<=2;i++)box(g,[0,i*.065,0],[1.4,.008,.009],black);
  }
  {
- const g=make('layers');g.position.set(1.1,.83,0);box(g,[0,0,0],[.025,.65,1.05],steel);box(g,[.18,0,0],[.04,.62,1.0],blue);box(g,[.38,0,0],[.08,.58,.95],rubber);
+ const g=make('layers');g.position.set(1.8,.83,-.45);box(g,[0,0,0],[.025,.65,1.05],steel);box(g,[.18,0,0],[.04,.62,1.0],blue);box(g,[.38,0,0],[.08,.58,.95],rubber);
  for(let z=-.4;z<=.4;z+=.1)box(g,[.21,0,z],[.005,.60,.008],steel);
  }
  {
@@ -133,7 +152,7 @@ export function createServiceEffects({scene,model,paints,invalidate,setDoorFract
  const g=make('step');g.position.set(.95,.23,0);box(g,[.1,0,0],[.32,.06,1.8],steel);for(let z=-.8;z<=.8;z+=.12)box(g,[.1,.033,z],[.29,.008,.028],rubber);box(g,[-.1,-.07,-.6],[.3,.04,.05],black);box(g,[-.1,-.07,.6],[.3,.04,.05],black);
  }
  {
- const g=make('camera');g.position.set(0,1.24,.64);box(g,[0,0,0],[.20,.10,.08],black);sphere(g,[.045,0,.055],.034,steel);sphere(g,[.045,0,.075],.024,mat('#14293c',.6,.08));box(g,[0,.09,-.02],[.035,.10,.025],steel);
+ const g=make('camera');const windshield=new THREE.Raycaster(new THREE.Vector3(0,1.28,4),new THREE.Vector3(0,0,-1)).intersectObject(model,true).find(h=>h.point.z>0&&(Array.isArray(h.object.material)?h.object.material[h.face.materialIndex]:h.object.material).name==='Glass');g.position.copy(windshield?.point||new THREE.Vector3(0,1.28,.7));g.position.z-=.065;demonstrations.dashcam.focus=g.position.toArray();box(g,[0,0,0],[.20,.10,.08],black);box(g,[-.015,0,-.043],[.14,.065,.006],new THREE.MeshBasicMaterial({color:'#536b76'}));sphere(g,[.08,.025,-.047],.007,new THREE.MeshBasicMaterial({color:'#d74b41'}));sphere(g,[.045,0,.055],.034,steel);sphere(g,[.045,0,.075],.024,mat('#14293c',.6,.08));box(g,[0,.09,-.02],[.035,.10,.025],steel);
  }
  {
  const g=make('hitch');g.position.set(0,.3,-2.55);tube(g,[[0,0,0],[0,0,-.28],[0,.13,-.40]],.035,steel);sphere(g,[0,.17,-.40],.055,steel);box(g,[.16,0,-.24],[.09,.12,.06],black);
@@ -196,12 +215,12 @@ export function createServiceEffects({scene,model,paints,invalidate,setDoorFract
    if(key==='underbody')g.children.forEach(o=>{if(o.userData.result)o.visible=progress>.02;});
    if(key==='step')g.position.x=.95+progress*.24;
    if(key==='coating')g.children.forEach(o=>o.scale.set(2.3-progress*1.3,.25+progress*.65,2.3-progress*1.3));
-   if(['mesh','camera','hitch','wheel','spring','alarm'].includes(key))g.scale.setScalar(.85+.15*progress);
+   if(['mesh','camera','hitch','wheel','spring','alarm'].includes(key))g.scale.setScalar((.85+.15*progress)*(g.userData.previewScale||1));
   }
-  if(kind==='closer')setDoorFraction((1-progress)*.23);
+  if(kind==='closer')setDoorFraction(progress===1?0:progress<.55?THREE.MathUtils.lerp(.32,.035,progress/.55):THREE.MathUtils.lerp(.035,0,(progress-.55)/.45));
   if(kind==='ambient')setAmbientFraction(progress);
   invalidate();
  }
  function select(slug){clear();active=demonstrations[slug];if(!active)throw new Error('Missing service demonstration: '+slug);u.demoKind.value=kinds.indexOf(active.kind);u.demoFocus.value.set(...active.focus);if(active.kind==='dent'){if(inspectionLight){inspectionState={position:inspectionLight.position.clone(),quaternion:inspectionLight.quaternion.clone(),width:inspectionLight.width,height:inspectionLight.height,intensity:inspectionLight.intensity};inspectionLight.position.set(3,1.2,-1.05);inspectionLight.lookAt(.92,.70,.12);inspectionLight.width=.07;inspectionLight.height=1.5;inspectionLight.intensity=9;}dent??=prepareDent();u.demoFocus.value.copy(dent.center);}apply(0);return active;}
- return {select,apply,clear,demonstrations,group,setLightMode(mode){if(inspectionState){const factor=mode==='inspection'?1:.18;inspectionState.intensity=4*factor;inspectionLight.intensity=9*factor;}},get status(){return {kind:active?.kind||null,progress,shaderCount,displacedVertices:active?.kind==='dent'?dent?.count:0,actualDentDisplacement:active?.kind==='dent'?Math.max(0,...dent.records.map(r=>{const p=r.mesh.geometry.attributes.position;let max=0;for(const i of r.indices){const delta=new THREE.Vector3(p.getX(i)-r.positions[i*3],p.getY(i)-r.positions[i*3+1],p.getZ(i)-r.positions[i*3+2]).applyMatrix3(new THREE.Matrix3().setFromMatrix4(r.worldMatrix));max=Math.max(max,delta.length());}return max;})):0,maxDentDepth:active?.kind==='dent'?dent.maxDepth*(1-progress):0,equipment:Object.entries(equipment).filter(([,g])=>g.visible).map(([k])=>k)};}};
+ return {select,apply,clear,demonstrations,group,setLightMode(mode){if(inspectionState){const factor=mode==='inspection'?1:.18;inspectionState.intensity=4*factor;inspectionLight.intensity=9*factor;}},get status(){return {kind:active?.kind||null,initialProgress:active?.preview||0,progress,shaderCount,displacedVertices:active?.kind==='dent'?dent?.count:0,actualDentDisplacement:active?.kind==='dent'?Math.max(0,...dent.records.map(r=>{const p=r.mesh.geometry.attributes.position;let max=0;for(const i of r.indices){const delta=new THREE.Vector3(p.getX(i)-r.positions[i*3],p.getY(i)-r.positions[i*3+1],p.getZ(i)-r.positions[i*3+2]).applyMatrix3(new THREE.Matrix3().setFromMatrix4(r.worldMatrix));max=Math.max(max,delta.length());}return max;})):0,maxDentDepth:active?.kind==='dent'?dent.maxDepth*(1-progress):0,equipment:Object.entries(equipment).filter(([,g])=>g.visible).map(([k])=>k)};}};
 }

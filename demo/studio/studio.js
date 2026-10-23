@@ -80,7 +80,7 @@ function render(now){
   if(t===1)flight=null;
  }
  if(doorMotion){const d=doorMotion;d.elapsed+=Math.max(0,now-d.last);d.last=now;const t=Math.min(1,d.elapsed/d.duration),e=t*t*(3-2*t);doorProgress=THREE.MathUtils.lerp(doorMotion.from,doorMotion.to,e);door.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*doorProgress));if(t===1){doorMotion=null;renderer.shadowMap.needsUpdate=true;}}
- if(serviceMotion){const d=serviceMotion;d.elapsed+=Math.max(0,now-d.last);d.last=now;const t=Math.min(1,d.elapsed/2200);setComparison(t*t*(3-2*t));if(t===1){serviceMotion=null;$('#demo-play').textContent='Повторить';}}
+ if(serviceMotion){const d=serviceMotion;d.elapsed+=Math.max(0,now-d.last);d.last=now;const t=THREE.MathUtils.clamp(d.elapsed/d.duration,0,1);setComparison(THREE.MathUtils.lerp(d.from,1,t*t*(3-2*t)));if(t===1){serviceMotion=null;$('#demo-play').textContent='Повторить';}}
  const begin=performance.now();renderer.render(scene,camera);stats.lastRenderSubmitMs=+(performance.now()-begin).toFixed(2);stats.frames++;
  // Count genuinely slow frames too; the former <300ms gate excluded stalled GPUs.
  if((flight||doorMotion||serviceMotion||interacting)&&lastFrame){
@@ -305,7 +305,7 @@ async function boot(){
  window.__STUDIO.surfaceAt=(x,z)=>{const hits=new THREE.Raycaster(new THREE.Vector3(x,5,z),new THREE.Vector3(0,-1,0)).intersectObject(model,true);const h=hits[0];if(!h)return null;const m=Array.isArray(h.object.material)?h.object.material[h.face.materialIndex]:h.object.material;return {mesh:h.object.name,material:m.name,color:m.color.getHexString(),painted:paints.includes(m),point:h.point.toArray()};};
  window.__STUDIO.samplePixels=()=>{renderer.render(scene,camera);const gl=renderer.getContext(),pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);const sampled=[];for(let i=0;i<pixels.length;i+=128)sampled.push(pixels[i],pixels[i+1],pixels[i+2]);return sampled;};
  window.__STUDIO.projectedBounds=()=>{camera.updateMatrixWorld();const b=new THREE.Box3().setFromObject(model);return [b.min.x,b.max.x].flatMap(x=>[b.min.y,b.max.y].flatMap(y=>[b.min.z,b.max.z].map(z=>new THREE.Vector3(x,y,z).project(camera).toArray())));};
- serviceEffects=createServiceEffects({scene,model,paints,invalidate,inspectionLight:workingLights[0],setDoorFraction:value=>{doorMotion=null;doorProgress=value;state.doorOpen=value>0;$('#door-toggle').setAttribute('aria-pressed',String(state.doorOpen));$('#door-toggle').textContent=state.doorOpen?'Закрыть водительскую дверь':'Открыть водительскую дверь';door?.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*value));renderer.shadowMap.needsUpdate=true;},setAmbientFraction:value=>{ambience.active.value=value;ambient.visible=value>0;}});
+ serviceEffects=createServiceEffects({scene,model,paints,invalidate,inspectionLight:workingLights[0],setDoorFraction:value=>{const changed=doorProgress!==value;doorMotion=null;doorProgress=value;state.doorOpen=value>0;$('#door-toggle').setAttribute('aria-pressed',String(state.doorOpen));$('#door-toggle').textContent=state.doorOpen?'Закрыть водительскую дверь':'Открыть водительскую дверь';door?.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*value));if(changed&&(value===0||value===.32))renderer.shadowMap.needsUpdate=true;},setAmbientFraction:value=>{ambience.active.value=value;ambient.visible=value>0;}});
  update();positionCamera();addStudioPosters(renderer,scene,model);stats.posters=3;updateEnvironment();
  status.textContent='Подготовка первого кадра…';const compile=performance.now();await renderer.compileAsync(scene,camera);stats.shaderCompileMs=+(performance.now()-compile).toFixed(1);
  const first=performance.now();renderer.render(scene,camera);stats.firstRenderSubmitMs=+(performance.now()-first).toFixed(1);stats.triangles=renderer.info.render.triangles;
@@ -316,10 +316,10 @@ all('[data-color]').forEach(b=>b.onclick=()=>{state.color=b.dataset.color;$('#co
 for(const key of ['finish','film'])all('[data-'+key+']').forEach(b=>b.onclick=()=>{state[key]=b.dataset[key];if(key==='film'&&state.film!=='none'){chooseView(({side:1,hood:2,roof:4,rear:3,all:0})[state.zone]);uniforms.polishing.value=0;}if(key==='finish')uniforms.polishing.value=0;all('[data-'+key+']').forEach(n=>n.setAttribute('aria-pressed',String(n===b)));update();});
 $('#zone').onchange=e=>{state.zone=e.target.value;chooseView(({side:1,hood:2,roof:4,rear:3,all:0})[state.zone]);uniforms.polishing.value=0;update();};
 const zoneView=z=>({hood:2,side:1,roof:4,rear:3,all:0}[z]);
-$('#polish-zone').onchange=e=>{state.polishZone=e.target.value;uniforms.polishing.value=1;chooseView(zoneView(state.polishZone));update();};
-$('#polish').oninput=e=>{state.polish=+e.target.value;uniforms.polishing.value=1;update();};
+$('#polish-zone').onchange=e=>{state.polishZone=e.target.value;uniforms.polishing.value=(state.service==='body-polish'||state.service==='protective-polish')?0:1;chooseView(zoneView(state.polishZone));update();};
+$('#polish').oninput=e=>{state.polish=+e.target.value;if(state.service==='body-polish'||state.service==='protective-polish'){serviceMotion=null;setComparison(state.polish/100);}else{uniforms.polishing.value=1;update();}};
 
-all('[data-view]').forEach(b=>b.onclick=()=>chooseView(+b.dataset.view));
+all('[data-view]').forEach(b=>b.onclick=()=>{if(+b.dataset.view===2){showService('body-polish');b.setAttribute('aria-pressed','true');}else chooseView(+b.dataset.view);});
 $('#reset').onclick=()=>{exitDemo();state.service=null;serviceOptions(true);$('#service-title').textContent='28 услуг ТИ';$('#service-lead').textContent='Выберите услугу для сравнения до / после.';$('#service-mode').textContent='';chromes.forEach(m=>m.color.copy(m.userData.original));windows.forEach(m=>m.color.set('#152025'));setDoor(false);setCabin(null);uniforms.polishing.value=0;$('#polish-zone').value=state.polishZone='all';all('[data-color]')[0].click();all('[data-finish]')[0].click();all('[data-film]')[0].click();$('#zone').value=state.zone='hood';$('#polish').value=state.polish=0;chooseView(0);update();};
 
 function setDoor(open){
@@ -333,7 +333,7 @@ function setCabin(service){
  ambience.active.value=service==='ambient'?1:0;if(ambient)ambient.visible=service==='ambient';plastics.forEach(m=>{m.emissive.set('#000000');});all('[data-cabin]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cabin===service)));if(service)chooseView(service==='steering'?7:['leather','trim','clean'].includes(service)?8:5);invalidate();
 }
 $('#door-toggle').onclick=()=>{setDoor(!state.doorOpen);if(state.doorOpen)chooseView(1);else if(state.view===5)chooseView(0);};
-all('[data-cabin]').forEach(b=>b.onclick=()=>{const slug={clean:'interior-clean',leather:'leather',trim:'interior-trim',plastic:'plastic',steering:'steering',sound:'soundproof',ambient:'ambient'}[b.dataset.cabin];showService(slug);setComparison(1);});
+all('[data-cabin]').forEach(b=>b.onclick=()=>{const slug={clean:'interior-clean',leather:'leather',trim:'interior-trim',plastic:'plastic',steering:'steering',sound:'soundproof',ambient:'ambient'}[b.dataset.cabin];showService(slug);});
 $('#leather-color').onchange=e=>{state.leather=e.target.value;exitDemo();state.service=null;setCabin('trim');};
 $('#ambient-color').onchange=e=>{if(state.service!=='ambient'){showService('ambient');setComparison(1);}state.ambientColor=e.target.value;ambience.color.value.set(state.ambientColor);ambient?.children.forEach(l=>l.color.set(state.ambientColor));setCabin('ambient');};
 $('#ambient-power').oninput=e=>{if(state.service!=='ambient'){showService('ambient');setComparison(1);}state.ambientPower=+e.target.value;ambience.power.value=state.ambientPower/100;ambient?.children.forEach(l=>l.intensity=.35*state.ambientPower/100);setCabin('ambient');};
@@ -341,12 +341,20 @@ $('#exterior').onclick=()=>{exitDemo();state.service=null;setCabin(null);setDoor
 
 
 const cabinServices={'interior-clean':'clean',leather:'leather',plastic:'plastic',steering:'steering','interior-trim':'trim',soundproof:'sound',ambient:'ambient'};
-function setComparison(value){
- if(!serviceEffects||!state.service)return;serviceEffects.apply(value);$('#demo-range').value=Math.round(value*100);$('#demo-percent').textContent=Math.round(value*100)+'%';
- $('#demo-before').setAttribute('aria-pressed',String(value===0));$('#demo-after').setAttribute('aria-pressed',String(value===1));
- $('#demo-caption').textContent=value===0?demonstrations[state.service].before:value===1?demonstrations[state.service].after:'Сравнение · '+Math.round(value*100)+'%';
+function startDemonstration(delay=0){
+ if(!state.service)return;
+ if(!state.motion){setComparison(1);return;}
+ let from=serviceEffects.status.progress;if(from>=.999){from=0;setComparison(0);}
+ serviceMotion={from,elapsed:-delay,last:performance.now(),duration:(state.service==='closers'?4200:2200)*(1-from)};
+ $('#demo-play').textContent='Пауза';invalidate();
 }
-function exitDemo(){serviceMotion=null;serviceEffects?.clear();document.body.classList.remove('service-active');$('#demo-overlay').hidden=true;}
+function setComparison(value){
+ if(!serviceEffects||!state.service)return;if(state.service==='body-polish'||state.service==='protective-polish'){$('#polish').value=state.polish=Math.round(value*100);}serviceEffects.apply(value);$('#demo-range').value=Math.round(value*100);$('#demo-percent').textContent=Math.round(value*100)+'%';
+ $('#demo-before').setAttribute('aria-pressed',String(value===0));$('#demo-after').setAttribute('aria-pressed',String(value===1));
+ $('#demo-caption').textContent=value===0?demonstrations[state.service].before:value===1?demonstrations[state.service].after:state.service==='closers'?(value<.55?'1 / 2 · Прикрываем дверь':'2 / 2 · Доводчик подтягивает замок'):'Сравнение · '+Math.round(value*100)+'%';
+}
+function serviceGlass(transparent=false){windows.forEach(m=>{if(m.transparent!==transparent){m.transparent=transparent;m.needsUpdate=true;}m.opacity=transparent?.14:1;m.depthWrite=!transparent;m.color.set(transparent?'#bfcdd0':'#152025');});}
+function exitDemo(){serviceGlass();serviceMotion=null;serviceEffects?.clear();document.body.classList.remove('service-active');$('#demo-overlay').hidden=true;}
 function focusService(slug){
  const d=demonstrations[slug],at=new THREE.Vector3(...d.focus),eye=new THREE.Vector3(...d.eye);
  if(innerWidth<801)eye.sub(at).multiplyScalar(cabinServices[slug] ? .9 : .70).add(at);
@@ -358,12 +366,13 @@ function showService(slug){
  $('#service-title').textContent=item.title;$('#service-lead').textContent=item.lead;$('#service-link').href='../../service.html?service='+encodeURIComponent(slug);
  chromes.forEach(m=>m.color.copy(m.userData.original));windows.forEach(m=>m.color.set('#152025'));
  setCabin(cabinServices[slug]||null);if(slug==='interior-trim')leathers.forEach(m=>m.color.copy(m.userData.baseColor));setDoor(!!cabinServices[slug]);
+ serviceGlass(slug==='dashcam');if(slug==='tint')windows.forEach(m=>m.color.set('#657681'));
  const d=serviceEffects.select(slug);$('#service-mode').textContent=d.note;
- $('#demo-title').textContent=item.title;$('#demo-overlay').hidden=false;document.body.classList.add('service-active');$('#demo-play').textContent='Показать результат';setComparison(0);focusService(slug);update();
+ $('#demo-title').textContent=item.title;$('#demo-overlay').hidden=false;document.body.classList.add('service-active');$('#demo-play').textContent=d.preview?'Повторить':'Показать результат';setComparison(d.preview||0);focusService(slug);update();if(slug==='closers'){if(state.motion)startDemonstration(1100);else $('#demo-play').textContent='Показать закрытие';}
 }
 $('#demo-range').oninput=e=>{serviceMotion=null;setComparison(+e.target.value/100);$('#demo-play').textContent='Показать результат';};
 for(const [id,value] of [['demo-before',0],['demo-after',1]])$('#'+id).onclick=()=>{serviceMotion=null;setComparison(value);};
-$('#demo-play').onclick=()=>{if(!state.service)return;if(serviceMotion){serviceMotion=null;$('#demo-play').textContent='Продолжить';return;}if(!state.motion){setComparison(1);return;}setComparison(0);serviceMotion={elapsed:0,last:performance.now()};$('#demo-play').textContent='Пауза';invalidate();};
+$('#demo-play').onclick=()=>{if(!state.service)return;if(serviceMotion){serviceMotion=null;$('#demo-play').textContent='Продолжить';return;}startDemonstration();};
 $('#demo-focus').onclick=()=>{if(state.service)focusService(state.service);};
 $('#demo-close').onclick=()=>{exitDemo();state.service=null;setCabin(null);setDoor(false);chooseView(0);};
 function serviceOptions(empty=false){const direction=$('#service-direction').value;$('#service-choice').replaceChildren(...Object.entries(services).filter(([,s])=>s.direction===direction).map(([id,s])=>new Option(s.title,id)));if(empty){const option=new Option('Выберите услугу…','',true,true);option.disabled=true;$('#service-choice').prepend(option);$('#service-choice').value='';}}

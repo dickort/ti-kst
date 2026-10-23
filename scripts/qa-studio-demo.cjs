@@ -11,7 +11,7 @@ const {chromium}=req('playwright');
  let available=false;
  for(let attempt=0;attempt<8;attempt++){
   const r=await api.request.get(url);
-  if(r.ok()&&(await r.text()).includes('studio-services-v7-stability1')){available=true;break;}
+  if(r.ok()&&(await r.text()).includes('studio-services-v7-services2')){available=true;break;}
   await new Promise(resolve=>setTimeout(resolve,10000));
  }
  assert(available,'Deployed studio HTML must be available');
@@ -21,7 +21,7 @@ const {chromium}=req('playwright');
   if(!asset)assert((await r.text()).includes('hero'),'Original homepage remains available');
  }
  await api.close();
- for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+ for(const viewport of [{width:1440,height:900},{width:390,height:844}].filter(v=>!process.env.STUDIO_QA_WIDTH||v.width===+process.env.STUDIO_QA_WIDTH)){
   const page=await browser.newPage({viewport,reducedMotion:'reduce',deviceScaleFactor:1,hasTouch:viewport.width<801}),errors=[],requests=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/shader|WebGLProgram|VALIDATE_STATUS/.test(m.text()))errors.push(m.text());});page.on('response',r=>{if(/\.glb/.test(r.url()))requests.push({url:r.url(),status:r.status()});});
   // Reduce only the raster workload on CI's software GPU, retaining all geometry.
@@ -36,10 +36,33 @@ const {chromium}=req('playwright');
    assert(actual.paint.every(x=>x.painted&&x.color===color.slice(1)),'Actual roof and spoiler material colors');
    assert.deepEqual(actual.protected,protectedSurfaces,'Glass, chrome and lower carbon unchanged');
   }
-  for(const view of [0,1,2,3,4]){
+  for(const view of [0,1,3,4]){
    await page.evaluate(v=>document.querySelector('[data-view="'+v+'"]').click(),view);await page.waitForFunction(()=>!__STUDIO.moving);
    assert((await page.evaluate(()=>__STUDIO.projectedBounds())).every(v=>Math.abs(v[0])<.98&&Math.abs(v[1])<.98),'Whole-car preset clipping');
   }
+  await page.evaluate(()=>document.querySelector('#service-cards a[href$="=closers"]').click());
+  assert.equal(await page.evaluate(()=>__STUDIO.doorProgress),.32,'Closer starts with the actual door ajar');
+  await page.locator('#demo-range').fill('55');
+  assert(Math.abs(await page.evaluate(()=>__STUDIO.doorProgress)-.035)<.001,'Second stage starts near the latch');
+  await page.evaluate(()=>document.querySelector('#demo-after').click());
+  assert.equal(await page.evaluate(()=>__STUDIO.doorProgress),0,'Closer fully latches the actual door');
+  assert.equal(await page.evaluate(()=>__STUDIO.state.doorOpen),false);
+  await page.evaluate(()=>document.querySelector('#demo-close').click());
+  // The visible polish shortcut must activate damage, not just move the camera.
+  await page.evaluate(()=>document.querySelector('[data-view="2"]').click());
+  await page.waitForFunction(()=>!__STUDIO.moving);
+  assert.equal(await page.evaluate(()=>__STUDIO.state.service),'body-polish');
+  assert.equal(await page.evaluate(()=>__STUDIO.demonstration.progress),0);
+  assert(await page.locator('#demo-overlay').isVisible());
+  const shortcutBefore=await page.evaluate(()=>__STUDIO.samplePixels());
+  await page.screenshot({path:path.join(out,'studio-polish-shortcut-'+viewport.width+'-before.png')});
+  await page.evaluate(()=>document.querySelector('#demo-after').click());
+  const shortcutAfter=await page.evaluate(()=>__STUDIO.samplePixels());
+  assert(shortcutAfter.reduce((n,v,i)=>n+(Math.abs(v-shortcutBefore[i])>3),0)>4,'Polish shortcut changes rendered surface');
+  await page.screenshot({path:path.join(out,'studio-polish-shortcut-'+viewport.width+'-after.png')});
+  await page.evaluate(()=>{const slider=document.querySelector('#polish');slider.value='50';slider.dispatchEvent(new Event('input'));});
+  assert.equal(await page.evaluate(()=>__STUDIO.demonstration.progress),.5,'Existing polish slider controls the same demonstration');
+  await page.evaluate(()=>document.querySelector('#demo-close').click());
   const orbitBefore=await page.evaluate(()=>__STUDIO.camera),rect=await page.locator('canvas').boundingBox();
   if(viewport.width>800){await page.mouse.move(rect.x+rect.width*.4,rect.y+rect.height*.5);await page.mouse.down();await page.mouse.move(rect.x+rect.width*.6,rect.y+rect.height*.55,{steps:5});await page.mouse.up();}
   else{const cd=await page.context().newCDPSession(page),x=rect.x+rect.width*.4,y=rect.y+rect.height*.5;await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+60,y:y+10}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
@@ -87,7 +110,7 @@ const {chromium}=req('playwright');
    for(const id of ids){
     await page.selectOption('#service-choice',id);assert.equal(await page.evaluate(()=>__STUDIO.state.service),id);catalogue.push(id);
     await page.evaluate(()=>scrollTo(0,0));
-    const demo=await page.evaluate(()=>__STUDIO.demonstration);assert(demo.kind,'Every catalogue service has a demonstration');assert.equal(demo.progress,0);
+    const demo=await page.evaluate(()=>__STUDIO.demonstration);assert(demo.kind,'Every catalogue service has a demonstration');assert.equal(demo.progress,demo.initialProgress);await page.evaluate(()=>document.querySelector('#demo-before').click());
     if(id==='pdr'){assert(demo.displacedVertices>100);assert(demo.actualDentDisplacement>.02&&demo.actualDentDisplacement<.046,'Dent changes actual geometry without quantization overflow');}
     const before=await page.evaluate(()=>__STUDIO.samplePixels());
     await page.evaluate(()=>document.querySelector('#demo-after').click());
@@ -114,7 +137,7 @@ const {chromium}=req('playwright');
   assert.equal(errors.length,0);await page.screenshot({path:path.join(out,'studio-'+viewport.width+'.png')});
   if(viewport.width>800){
    await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForFunction(()=>__STUDIO.state.motion);
-   const intermediate=await page.evaluate(async()=>{document.querySelector('#door-toggle').click();const frames=[];for(let i=0;i<40;i++){await new Promise(requestAnimationFrame);frames.push(__STUDIO.doorProgress);}return frames;});
+   const intermediate=await page.evaluate(async()=>{const nativeRAF=window.requestAnimationFrame;let clock=performance.now();window.requestAnimationFrame=callback=>nativeRAF(()=>callback(clock+=16));try{document.querySelector('#door-toggle').click();const frames=[];for(let i=0;i<40;i++){await new Promise(requestAnimationFrame);frames.push(__STUDIO.doorProgress);}return frames;}finally{window.requestAnimationFrame=nativeRAF;}});
    assert(new Set(intermediate.filter(x=>x>.01&&x<.99)).size>=5,'Visible intermediate door poses');
    await page.waitForFunction(()=>!__STUDIO.moving,null,{timeout:120000});
    assert.equal(await page.evaluate(()=>__STUDIO.doorProgress),1);

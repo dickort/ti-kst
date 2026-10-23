@@ -13,7 +13,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     container:
       image: mcr.microsoft.com/playwright:v1.51.1-noble
       options: --shm-size=1gb
@@ -45,6 +45,7 @@ jobs:
           node scripts/qa-fast-hero.cjs "$RUNNER_TEMP/ti-nav-deps"
           node scripts/qa-hero-regression.cjs "$RUNNER_TEMP/ti-nav-deps"
           node scripts/qa-studio-demo.cjs "$RUNNER_TEMP/ti-nav-deps"
+          node scripts/qa-studio-services.cjs "$RUNNER_TEMP/ti-nav-deps"
       - name: Save interaction checks and previews
         if: always()
         uses: actions/upload-artifact@v4
@@ -79,7 +80,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     container:
       image: mcr.microsoft.com/playwright:v1.51.1-noble
       options: --shm-size=1gb
@@ -90,7 +91,9 @@ jobs:
       - name: Verify deployed demo and existing homepage
         env:
           PAGES_URL: ${{ needs.deploy.outputs.page_url }}
-        run: node scripts/qa-studio-demo.cjs "$RUNNER_TEMP/studio-qa"
+        run: |
+          node scripts/qa-studio-demo.cjs "$RUNNER_TEMP/studio-qa"
+          node scripts/qa-studio-services.cjs "$RUNNER_TEMP/studio-qa"
       - name: Save public verification
         if: always()
         uses: actions/upload-artifact@v4
