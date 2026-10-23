@@ -11,7 +11,7 @@ const {chromium}=req('playwright');
  let available=false;
  for(let attempt=0;attempt<8;attempt++){
   const r=await api.request.get(url);
-  if(r.ok()&&(await r.text()).includes('studio-services-v7')){available=true;break;}
+  if(r.ok()&&(await r.text()).includes('studio-services-v7-stability1')){available=true;break;}
   await new Promise(resolve=>setTimeout(resolve,10000));
  }
  assert(available,'Deployed studio HTML must be available');

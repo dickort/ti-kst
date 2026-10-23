@@ -165,10 +165,29 @@ export function createServiceEffects({scene,model,paints,invalidate,setDoorFract
    mesh.geometry=source.clone();const positions=new Float32Array(p.count*3),normals=new Float32Array(p.count*3);
    for(let i=0;i<p.count;i++){positions.set([p.getX(i),p.getY(i),p.getZ(i)],i*3);normals.set([normal.getX(i),normal.getY(i),normal.getZ(i)],i*3);}
    mesh.geometry.setAttribute('position',new THREE.BufferAttribute(positions.slice(),3));mesh.geometry.setAttribute('normal',new THREE.BufferAttribute(normals.slice(),3));
-   const localDirection=new THREE.Vector3(1,0,0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(mesh.matrixWorld.clone().invert()));records.push({mesh,source,positions,normals,indices,weights,localDirection,worldMatrix:mesh.matrixWorld.clone()});count+=indices.length;
+   const localDirection=new THREE.Vector3(1,0,0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(mesh.matrixWorld.clone().invert()));const toWorld=new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld),toLocal=toWorld.clone().invert();
+   const gradients=[],worldNormals=[],ranges=[];
+   for(const id of indices){const v=new THREE.Vector3().fromBufferAttribute(p,id).applyMatrix4(mesh.matrixWorld).sub(center),q=1-v.lengthSq()/(.36*.36);gradients.push(v.multiplyScalar(-6*q*q/(.36*.36)));worldNormals.push(new THREE.Vector3().fromBufferAttribute(normal,id).applyMatrix3(toWorld).normalize());const last=ranges.at(-1);if(last&&last.start+last.count===id*3)last.count+=3;else ranges.push({start:id*3,count:3});}
+   mesh.geometry.computeBoundingSphere();mesh.geometry.boundingSphere.radius+=localDirection.length()*.045;
+   mesh.geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);mesh.geometry.attributes.normal.setUsage(THREE.DynamicDrawUsage);
+   records.push({mesh,source,positions,normals,indices,weights,localDirection,worldMatrix:mesh.matrixWorld.clone(),gradients,worldNormals,toLocal,ranges});count+=indices.length;
   });if(driver)driver.quaternion.copy(saved);model.updateMatrixWorld(true);return {center,records,count,maxDepth:.045};
  }
- function deform(amount){if(!dent)return;for(const r of dent.records){const p=r.mesh.geometry.attributes.position;p.array.set(r.positions);r.indices.forEach((id,j)=>{p.setXYZ(id,p.getX(id)-r.localDirection.x*r.weights[j]*dent.maxDepth*amount,p.getY(id)-r.localDirection.y*r.weights[j]*dent.maxDepth*amount,p.getZ(id)-r.localDirection.z*r.weights[j]*dent.maxDepth*amount);});p.needsUpdate=true;if(r.normals){const normals=r.mesh.geometry.attributes.normal;normals.array.set(r.normals);if(amount){const toWorld=new THREE.Matrix3().getNormalMatrix(r.worldMatrix),toLocal=toWorld.clone().invert();for(const id of r.indices){const v=new THREE.Vector3().fromBufferAttribute(r.source.attributes.position,id).applyMatrix4(r.worldMatrix).sub(dent.center),q=1-v.lengthSq()/(.36*.36),grad=v.multiplyScalar(-6*q*q/(.36*.36)),n=new THREE.Vector3().fromBufferAttribute(r.source.attributes.normal,id).applyMatrix3(toWorld).normalize(),a=dent.maxDepth*amount;n.x/=1-a*grad.x;n.y+=a*grad.y*n.x;n.z+=a*grad.z*n.x;n.applyMatrix3(toLocal).normalize();normals.setXYZ(id,n.x,n.y,n.z);}}normals.needsUpdate=true;}r.mesh.geometry.computeBoundingSphere();}}
+ function deform(amount){
+  if(!dent||dent.amount===amount)return;dent.amount=amount;
+  const n=new THREE.Vector3(),depth=dent.maxDepth*amount;
+  for(const r of dent.records){
+   const p=r.mesh.geometry.attributes.position,normals=r.mesh.geometry.attributes.normal;
+   for(let j=0;j<r.indices.length;j++){
+    const id=r.indices[j],offset=id*3,d=r.weights[j]*depth;
+    p.setXYZ(id,r.positions[offset]-r.localDirection.x*d,r.positions[offset+1]-r.localDirection.y*d,r.positions[offset+2]-r.localDirection.z*d);
+    if(amount){const grad=r.gradients[j];n.copy(r.worldNormals[j]);n.x/=1-depth*grad.x;n.y+=depth*grad.y*n.x;n.z+=depth*grad.z*n.x;n.applyMatrix3(r.toLocal).normalize();normals.setXYZ(id,n.x,n.y,n.z);}
+    else normals.setXYZ(id,r.normals[offset],r.normals[offset+1],r.normals[offset+2]);
+   }
+   // Upload only changed contiguous vertex ranges; bounds already include the full dent.
+   for(const attribute of [p,normals]){attribute.clearUpdateRanges();for(const range of r.ranges)attribute.addUpdateRange(range.start,range.count);attribute.needsUpdate=true;}
+  }
+ }
  function clear(){if(active?.kind==='dent')deform(0);if(inspectionState){inspectionLight.position.copy(inspectionState.position);inspectionLight.quaternion.copy(inspectionState.quaternion);Object.assign(inspectionLight,{width:inspectionState.width,height:inspectionState.height,intensity:inspectionState.intensity});inspectionState=null;}active=null;u.demoKind.value=0;Object.values(equipment).forEach(g=>g.visible=false);invalidate();}
  function apply(value){progress=THREE.MathUtils.clamp(value,0,1);u.demoProgress.value=progress;if(!active)return;const kind=active.kind;
   if(kind==='dent')deform(1-progress);

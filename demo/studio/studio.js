@@ -19,7 +19,7 @@ const paints=[],leathers=[],plastics=[],chromes=[],windows=[];const textures={le
 const viewport=$('#viewport'),canvas=$('canvas'),status=$('#status');
 window.__STUDIO={state,stats,get loop(){return {raf,visible,drawing}},get demonstration(){return serviceEffects?.status},get moving(){return !!flight||!!doorMotion||!!serviceMotion},get doorProgress(){return doorProgress},get serviceCount(){return Object.keys(services).length},get ambient(){return {active:ambience.active.value,power:ambience.power.value,color:ambience.color.value.getHexString(),lightCount:ambient?.children.length}},get cabinMaterials(){return leathers.map(m=>({name:m.name,color:m.color.getHexString(),roughness:m.roughness}))},get camera(){return camera?.position.toArray()},get materials(){return paints.map(m=>({name:m.name,color:m.color.getHexString(),map:!!m.map,roughness:m.roughness,metalness:m.metalness}))}};
 all('[data-view]').forEach(b=>b.disabled=true);
-function fallback(message){$('#color-wheel').setAttribute('aria-disabled','true');$('#color-wheel').tabIndex=-1;state.ready=false;cancelAnimationFrame(raf);raf=0;document.body.classList.add('fallback');$('#poster').hidden=false;canvas.hidden=true;$('#controls').disabled=true;all('[data-view]').forEach(b=>b.disabled=true);$('#motion').disabled=true;status.textContent=message;$('#scroll-hint').textContent='';stats.error=message;metrics();}
+function fallback(message){$('#color-wheel').setAttribute('aria-disabled','true');$('#color-wheel').tabIndex=-1;state.ready=false;cancelAnimationFrame(raf);raf=0;document.body.classList.add('fallback');$('#poster').hidden=false;canvas.hidden=true;$('#controls').disabled=true;all('[data-view]').forEach(b=>b.disabled=true);$('#motion').disabled=true;$('#economy').disabled=true;status.textContent=message;$('#scroll-hint').textContent='';stats.error=message;metrics();}
 function metrics(){$('#metrics').textContent=JSON.stringify(stats,null,2);}
 function invalidate(){if(!drawing&&!raf&&visible&&!document.hidden&&renderer&&state.ready)raf=requestAnimationFrame(render);}
 const points=[
@@ -71,6 +71,7 @@ function setupControls(){
 function positionCamera(){const p=preset(0);camera.position.copy(p.eye);controls.target.copy(p.at);controls.update();}
 function render(now){
  raf=0;if(!visible||document.hidden||!state.ready)return;drawing=true;
+ try{
  if(flight){
   const f=flight,t=Math.min(1,(now-f.start)/700),e=t*t*(3-2*t);
   controls.target.lerpVectors(f.fromAt,f.at,e);
@@ -78,11 +79,21 @@ function render(now){
   camera.position.setFromSpherical(a).add(controls.target);controls.update();
   if(t===1)flight=null;
  }
- if(doorMotion){const d=doorMotion;d.elapsed+=Math.min(80,Math.max(0,now-d.last));d.last=now;const t=Math.min(1,d.elapsed/d.duration),e=t*t*(3-2*t);doorProgress=THREE.MathUtils.lerp(doorMotion.from,doorMotion.to,e);door.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*doorProgress));if(t===1){doorMotion=null;renderer.shadowMap.needsUpdate=true;}}
- if(serviceMotion){const d=serviceMotion;d.elapsed+=Math.min(80,Math.max(0,now-d.last));d.last=now;const t=Math.min(1,d.elapsed/2200);setComparison(t*t*(3-2*t));if(t===1){serviceMotion=null;$('#demo-play').textContent='Повторить';}}
+ if(doorMotion){const d=doorMotion;d.elapsed+=Math.max(0,now-d.last);d.last=now;const t=Math.min(1,d.elapsed/d.duration),e=t*t*(3-2*t);doorProgress=THREE.MathUtils.lerp(doorMotion.from,doorMotion.to,e);door.quaternion.copy(doorRest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-62*Math.PI/180*doorProgress));if(t===1){doorMotion=null;renderer.shadowMap.needsUpdate=true;}}
+ if(serviceMotion){const d=serviceMotion;d.elapsed+=Math.max(0,now-d.last);d.last=now;const t=Math.min(1,d.elapsed/2200);setComparison(t*t*(3-2*t));if(t===1){serviceMotion=null;$('#demo-play').textContent='Повторить';}}
  const begin=performance.now();renderer.render(scene,camera);stats.lastRenderSubmitMs=+(performance.now()-begin).toFixed(2);stats.frames++;
- if((flight||doorMotion||serviceMotion||interacting)&&lastFrame&&now-lastFrame>40&&now-lastFrame<300){slow++;if(slow>8&&!stats.adaptive){renderer.setPixelRatio(Math.max(Math.min(.75,renderer.getPixelRatio()),renderer.getPixelRatio()*.7));stats.adaptive=true;stats.pixelRatio=renderer.getPixelRatio();}}
- drawing=false;lastFrame=flight||doorMotion||serviceMotion||interacting?now:0;if(flight||doorMotion||serviceMotion)invalidate();else metrics();
+ // Count genuinely slow frames too; the former <300ms gate excluded stalled GPUs.
+ if((flight||doorMotion||serviceMotion||interacting)&&lastFrame){
+  const gap=now-lastFrame;
+  slow=gap>250?3:gap>50?slow+1:Math.max(0,slow-1);
+  if(slow>=3&&renderer.getPixelRatio()>.6){
+   renderer.setPixelRatio(Math.max(.6,renderer.getPixelRatio()*.75));
+   stats.adaptive=true;stats.pixelRatio=renderer.getPixelRatio();slow=0;
+  }
+ }
+ }catch(error){console.error('Studio render failed',error);fallback('Не удалось продолжить 3D · обновите страницу');}
+ finally{drawing=false;}
+ lastFrame=flight||doorMotion||serviceMotion||interacting?now:0;if(flight||doorMotion||serviceMotion)invalidate();else metrics();
 }
 function resize(){
  if(!renderer)return;renderer.setSize(viewport.clientWidth,viewport.clientHeight,false);camera.aspect=viewport.clientWidth/viewport.clientHeight;camera.updateProjectionMatrix();
@@ -235,7 +246,9 @@ function room(){
 async function boot(){
  try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
- renderer.setPixelRatio(Math.min(devicePixelRatio,stats.tier==='mobile'?1.25:1.5));stats.pixelRatio=renderer.getPixelRatio();
+ const gl=renderer.getContext(),debug=gl.getExtension('WEBGL_debug_renderer_info');
+ stats.softwareRenderer=!!debug&&/SwiftShader|llvmpipe|software|Microsoft Basic Render/i.test(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL));
+ renderer.setPixelRatio(Math.min(devicePixelRatio,stats.softwareRenderer?.5:stats.tier==='mobile'?1:1.25));stats.pixelRatio=renderer.getPixelRatio();
  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
  scene=new THREE.Scene();scene.background=new THREE.Color('#20252c');scene.fog=new THREE.Fog('#20252c',18,40);
  camera=new THREE.PerspectiveCamera(36,1,.1,70);setupControls();room();resize();
@@ -296,7 +309,7 @@ async function boot(){
  update();positionCamera();addStudioPosters(renderer,scene,model);stats.posters=3;updateEnvironment();
  status.textContent='Подготовка первого кадра…';const compile=performance.now();await renderer.compileAsync(scene,camera);stats.shaderCompileMs=+(performance.now()-compile).toFixed(1);
  const first=performance.now();renderer.render(scene,camera);stats.firstRenderSubmitMs=+(performance.now()-first).toFixed(1);stats.triangles=renderer.info.render.triangles;
- state.ready=true;$('#poster').hidden=true;$('#controls').disabled=false;all('[data-view]').forEach(b=>b.disabled=false);status.textContent='MERCEDES-AMG GT 63 S · 3D';document.body.dataset.ready='true';metrics();invalidate();
+ state.ready=true;$('#economy').disabled=false;$('#poster').hidden=true;$('#controls').disabled=false;all('[data-view]').forEach(b=>b.disabled=false);status.textContent='MERCEDES-AMG GT 63 S · 3D';document.body.dataset.ready='true';metrics();invalidate();
  }catch(e){console.error('Studio:',e);fallback('3D недоступно · показано статичное изображение');}
 }
 all('[data-color]').forEach(b=>b.onclick=()=>{state.color=b.dataset.color;$('#color-name').textContent=b.dataset.name;all('[data-color]').forEach(n=>n.setAttribute('aria-pressed',String(n===b)));update();});
@@ -379,6 +392,7 @@ for(const [key,title] of [['preserve','Сохранить'],['restore','Восс
 }
 
 function motionUI(){$('#motion').setAttribute('aria-pressed',String(state.motion));$('#motion').textContent='Плавные переходы: '+(state.motion?'вкл.':'выкл.');$('#scroll-hint').textContent=innerWidth>800?'Потяните, чтобы вращать · колесо — масштаб':'Вращайте пальцем · два пальца — масштаб';}
+$('#economy').onclick=()=>{if(!renderer||!state.ready)return;const enabled=$('#economy').getAttribute('aria-pressed')!=='true';$('#economy').setAttribute('aria-pressed',String(enabled));$('#economy').textContent='Лёгкий режим: '+(enabled?'вкл.':'выкл.');renderer.setPixelRatio(Math.min(devicePixelRatio,enabled?.5:stats.softwareRenderer?.5:stats.tier==='mobile'?1:1.25));stats.pixelRatio=renderer.getPixelRatio();slow=0;invalidate();};
 $('#motion').onclick=()=>{state.motion=!state.motion;motionUI();if(!state.motion&&serviceMotion){serviceMotion=null;setComparison(1);}if(!state.motion&&flight){camera.position.setFromSpherical(flight.b).add(flight.at);controls.target.copy(flight.at);controls.update();flight=null;}invalidate();};
 reduced.addEventListener('change',e=>{state.motion=!e.matches;motionUI();if(e.matches&&serviceMotion){serviceMotion=null;setComparison(1);}if(e.matches&&flight){const value=state.view;flight=null;if(value==='service')focusService(state.service);else chooseView(value);}invalidate();});
 new ResizeObserver(()=>{resize();motionUI();}).observe(viewport);

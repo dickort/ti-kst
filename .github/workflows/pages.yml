@@ -79,7 +79,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.51.1-noble
       options: --shm-size=1gb
